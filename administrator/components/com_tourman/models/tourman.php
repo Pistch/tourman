@@ -291,8 +291,15 @@ class TourmanModelTourman extends ListModel
             }
         }
 
-        if (count($errors) > 0) {
-            return ["result" => "OK"];
+        if (count($errors) === 0) {
+            $registeredIds = R::find('registration', ' stage_id = ? ', [$stageId]);
+            $registeredUsers = [];
+
+            foreach ($registeredIds as $key => $user) {
+                $registeredUsers[] = $this -> getFullUser($user);
+            }
+
+            return $registeredUsers;
         } else {
             return [
                 "result" => "Error",
