@@ -59,7 +59,7 @@ class TourmanModelTourman extends ListModel
     }
 
     public function getUser($userID) {
-        $fullUser = R::load('cmys_user', $userID);
+        $fullUser = R::load('user', $userID);
         return $fullUser['name'];
     }
 
