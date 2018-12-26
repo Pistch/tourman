@@ -342,6 +342,24 @@ class TourmanModelTourman extends ListModel
         }
     }
 
+    public function unregisterPlayerFromStage($playerId, $stageId) {
+        $stage = R::load('stage', $stageId);
+
+        if (isset($stage['id'])) {
+            $player = $this -> getFullUser($playerId);
+
+            if (isset($player['id'])) {
+                $registration = R::findOne('registration', ' player_id = ? ', [$playerId]);
+
+                if ($registration) {
+                    R::trash($registration);
+                }
+            }
+        }
+
+        return $this -> getRegisteredPlayers($stageId);
+    }
+
     public function closeRegistration($stageId) {
         $stage = R::load('stage', $stageId);
         $gamesQuantity = $stage -> net_size / 2;
