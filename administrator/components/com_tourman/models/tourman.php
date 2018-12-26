@@ -157,7 +157,7 @@ class TourmanModelTourman extends ListModel
                 $game -> pl1_score = 0;
                 $game -> pl2_score = 0;
                 $game -> stage_id = $stageId;
-                $game -> phase_placement = $i;
+                $game -> phase_placement = $i / 2;
                 $game -> phase = 'w' . $phaseNo;
 
                 R::store($game);
@@ -177,7 +177,7 @@ class TourmanModelTourman extends ListModel
             $game -> pl1_score = 0;
             $game -> pl2_score = 0;
             $game -> stage_id = $stageId;
-            $game -> phase_placement = $i;
+            $game -> phase_placement = $i / 2;
             $game -> phase = 'w0';
 
             R::store($game);
@@ -191,7 +191,7 @@ class TourmanModelTourman extends ListModel
             $game -> pl1_score = 0;
             $game -> pl2_score = 0;
             $game -> stage_id = $stageId;
-            $game -> phase_placement = $i;
+            $game -> phase_placement = $i / 2;
             $game -> phase = 'w1';
 
             R::store($game);
@@ -205,7 +205,7 @@ class TourmanModelTourman extends ListModel
             $game -> pl1_score = 0;
             $game -> pl2_score = 0;
             $game -> stage_id = $stageId;
-            $game -> phase_placement = $i;
+            $game -> phase_placement = $i / 2;
             $game -> phase = 'w2';
 
             R::store($game);
@@ -220,7 +220,7 @@ class TourmanModelTourman extends ListModel
             $game -> pl1_score = 0;
             $game -> pl2_score = 0;
             $game -> stage_id = $stageId;
-            $game -> phase_placement = $i;
+            $game -> phase_placement = $i / 2;
             $game -> phase = 'l0';
 
             R::store($game);
@@ -234,7 +234,7 @@ class TourmanModelTourman extends ListModel
             $game -> pl1_score = 0;
             $game -> pl2_score = 0;
             $game -> stage_id = $stageId;
-            $game -> phase_placement = $i;
+            $game -> phase_placement = $i / 2;
             $game -> phase = 'l1';
 
             R::store($game);
@@ -248,7 +248,7 @@ class TourmanModelTourman extends ListModel
             $game -> pl1_score = 0;
             $game -> pl2_score = 0;
             $game -> stage_id = $stageId;
-            $game -> phase_placement = $i;
+            $game -> phase_placement = $i / 2;
             $game -> phase = 'l2';
 
             R::store($game);
@@ -262,7 +262,7 @@ class TourmanModelTourman extends ListModel
             $game -> pl1_score = 0;
             $game -> pl2_score = 0;
             $game -> stage_id = $stageId;
-            $game -> phase_placement = $i;
+            $game -> phase_placement = $i / 2;
             $game -> phase = 'l3';
 
             R::store($game);
@@ -278,7 +278,7 @@ class TourmanModelTourman extends ListModel
                 $game -> pl1_score = 0;
                 $game -> pl2_score = 0;
                 $game -> stage_id = $stageId;
-                $game -> phase_placement = $i;
+                $game -> phase_placement = $i / 2;
                 $game -> phase = 'o' . $phaseNo;
 
                 R::store($game);
