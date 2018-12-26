@@ -300,33 +300,21 @@ class TourmanModelTourman extends ListModel
     }
 
     public function registerPlayersToStage($playerIds, $stageId) {
-        $errors = [];
-
         foreach ($playerIds as $id) {
-            $result = $this -> registerPlayerToStage($id, $stageId);
-            if (!$result) {
-                $errors[] = $id;
-            }
+            $this -> tryRegisterPlayerToStage($id, $stageId);
         }
 
-        if (count($errors) === 0) {
-            return $this -> getRegisteredPlayers($stageId);
-        } else {
-            return [
-                "result" => "Error",
-                "info" => $errors
-            ];
-        }
+        return $this -> getRegisteredPlayers($stageId);
     }
 
-    private function registerPlayerToStage($playerId, $stageId) {
+    private function tryRegisterPlayerToStage($playerId, $stageId) {
         $stage = R::load('stage', $stageId);
 
         if (isset($stage['id'])) {
             $player = $this -> getFullUser($playerId);
 
             if (isset($player['id'])) {
-                if (R::findOne('registration', ' player_id = ? ', [$playerId]) !== null) {
+                if (R::findOne('registration', ' player_id = ? AND stage_id = ?', [$playerId, $stageId]) !== null) {
                     return false;
                 }
 
@@ -349,7 +337,7 @@ class TourmanModelTourman extends ListModel
             $player = $this -> getFullUser($playerId);
 
             if (isset($player['id'])) {
-                $registration = R::findOne('registration', ' player_id = ? ', [$playerId]);
+                $registration = R::findOne('registration', ' player_id = ? AND stage_id = ? ', [$playerId, $stageId]);
 
                 if ($registration) {
                     R::trash($registration);
