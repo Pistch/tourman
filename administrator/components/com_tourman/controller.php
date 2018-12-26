@@ -36,6 +36,7 @@ class TourmanController extends BaseController
 
         $this -> registerTask('make-new-tournament', 'makeNewTournament');
         $this -> registerTask('make-new-tournament-stage', 'makeNewTournamentStage');
+        $this -> registerTask('close-registration', 'closeRegistration');
     }
 
     public function getModel($name = 'Tourman', $prefix = 'TourmanModel', $config = array()) {
@@ -101,6 +102,12 @@ class TourmanController extends BaseController
         $post = $this -> getPostData();
 
         return $this -> sendResponse($this -> getModel() -> unregisterPlayerFromStage($post['userId'], $post['stageId']));
+    }
+
+    public function closeRegistration() {
+        $post = $this -> getPostData();
+
+        return $this -> sendResponse($this -> getModel() -> closeRegistration($post['stageId']));
     }
 
 

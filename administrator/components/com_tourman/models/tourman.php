@@ -364,7 +364,7 @@ class TourmanModelTourman extends ListModel
         $stage = R::load('stage', $stageId);
         $gamesQuantity = $stage -> net_size / 2;
 
-        if ((int)$stage['state'] !== 1) {
+        if ((int)$stage['status'] !== 1) {
             return [
                 "result" => "ERROR",
                 "info" => "Wrong stage state"
@@ -373,12 +373,12 @@ class TourmanModelTourman extends ListModel
 
         if (isset($stage['id'])) {
             $this -> seedPlayers($stageId, $gamesQuantity);
-            $stage['state'] = 2;
+            $stage['status'] = 2;
 
             R::store($stage);
         }
 
-        return ["result" => "OK"];
+        return $this -> getTournamentStage($stageId);
     }
 
     private function seedPlayers($stageId, $gamesQuantity) {
@@ -404,9 +404,9 @@ class TourmanModelTourman extends ListModel
                 $player2Id = $playerIds[$i + $gamesQuantity];
             }
 
-            $game = R::findOne('games', ' phase = "w0" AND phase_placement = ? ', [$i]);
-            $game -> pl1_id = $player1Id;
-            $game -> pl2_id = $player2Id;
+            $game = R::findOne('games', ' phase = "w0" AND phase_placement = ? AND stage_id = ?', [$i * 2, $stageId]);
+            $game['pl1_id'] = $player1Id;
+            $game['pl2_id'] = $player2Id;
 
             R::store($game);
         }
