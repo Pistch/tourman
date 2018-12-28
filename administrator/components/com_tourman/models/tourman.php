@@ -103,6 +103,118 @@ class TourmanModelTourman extends ListModel
         return $match;
     }
 
+    public function finalizeMatch($matchId) {
+        $match = R::load('games', (int)$matchId);
+
+        if (
+            ((int)$match['pl1_id'] === 0 && (int)$match['pl2_id'] === 0) ||
+            (
+                (int)$match['pl1_id'] !== 0 &&
+                (int)$match['pl2_id'] !== 0 &&
+                (int)$match['pl1_score'] === 0 &&
+                (int)$match['pl2_score'] === 0
+            )
+        ) {
+            return $match;
+        }
+
+        $phaseType = substr($match['phase'], 0, 1);
+        $phaseNo = (int)substr($match['phase'], 1, 1);
+        $nextPhaseNo = $phaseNo + 1;
+        $isLastPhase = R::findOne('games', ' stage_id = ? AND phase = ? ', [$match['stage_id'], "$phaseType$nextPhaseNo"]) === null;
+
+        $stage = R::load('stage', $match['stage_id']);
+
+        if ((int)$match['pl1_score'] > (int)$match['pl2_score']) {
+            $winnerId = $match['pl1_id'];
+            $loserId = $match['pl2_id'];
+        } elseif ((int)$match['pl1_score'] < (int)$match['pl2_score'])  {
+            $winnerId = $match['pl2_id'];
+            $loserId = $match['pl1_id'];
+        } elseif ((int)$match['pl1_score'] === 0) {
+            $this -> proceedWinner((int)$match['pl2_id'] === 0 ? $match['pl1_id'] : $match['pl2_id'], $match, $stage, $phaseType, $phaseNo, $isLastPhase);
+            $match['done'] = true;
+            R::store($match);
+            return $match;
+        } else {
+            return $match;
+        }
+
+        $this -> proceedWinner($winnerId, $match, $stage, $phaseType, $phaseNo, $isLastPhase);
+        $this -> proceedLoser($loserId, $match, $stage, $phaseType, $phaseNo, $isLastPhase);
+
+        $match['done'] = true;
+
+        R::store($match);
+
+        return $match;
+    }
+
+    private function proceedLoser($loserId, $match, $stage, $phaseType, $phaseNo, $isLastPhase) {
+        $placeMap = array(
+            32 => array(
+                0 => 2,
+                1 => 3,
+                2 => 5,
+                3 => 9,
+                4 => 13,
+                5 => 17,
+                6 => 25
+            ),
+            64 => array(
+                0 => 2,
+                1 => 3,
+                2 => 5,
+                3 => 9,
+                4 => 17,
+                5 => 25,
+                6 => 33,
+                7 => 49
+            )
+        );
+
+        if ($stage['net_type'] === '2-0') {
+            $resultsRecord = R::dispense('result');
+
+            $resultsRecord['tournament_stage_id'] = $match['stage_id'];
+            $resultsRecord['user_id'] = $loserId;
+            $resultsRecord['place'] = $placeMap[(int)$stage['net_size'] > 32 ? 64 : 32][log((int)$stage['net_size'], 2) - $phaseNo - 1];
+            R::store($resultsRecord);
+
+            return;
+        } else {
+            //todo
+        }
+    }
+
+    private function proceedWinner($winnerId, $match, $stage, $phaseType, $phaseNo, $isLastPhase) {
+        if ($stage['net_type'] === '2-0') {
+            if ($isLastPhase) {
+                $resultsRecord = R::dispense('result');
+
+                $resultsRecord['tournament_stage_id'] = $match['stage_id'];
+                $resultsRecord['user_id'] = $winnerId;
+                $resultsRecord['place'] = 1;
+                R::store($resultsRecord);
+                return;
+            } else {
+                $newPhase = $phaseType . (string)($phaseNo + 1);
+                $phasePlacement = (int)$match['phase_placement'] / 2;
+                $newGame = R::findOne('games', ' stage_id = ? AND phase = ? AND phase_placement = ? ', [$match['stage_id'], $newPhase, floor($phasePlacement)]);
+
+                if ((int)$match['phase_placement'] % 2 === 0) {
+                    $newGame -> pl1_id = $winnerId;
+                } else {
+                    $newGame -> pl2_id = $winnerId;
+                }
+
+                R::store($newGame);
+            }
+        } else {
+            //todo
+        }
+    }
+
     public function makeNewTournament($data) {
         $tournament = R::dispense('tournament');
 
@@ -392,9 +504,14 @@ class TourmanModelTourman extends ListModel
                 $player2Id = $playerIds[$i + $gamesQuantity];
             }
 
-            $game = R::findOne('games', ' phase = "w0" AND phase_placement = ? AND stage_id = ?', [$i * 2, $stageId]);
+            $game = R::findOne('games', ' phase = "w0" AND phase_placement = ? AND stage_id = ?', [$i, $stageId]);
+
             $game['pl1_id'] = $player1Id;
             $game['pl2_id'] = $player2Id;
+
+            if ($player1Id === 0 || $player2Id === 0) {
+                $this -> finalizeMatch($game['id']);
+            }
 
             R::store($game);
         }

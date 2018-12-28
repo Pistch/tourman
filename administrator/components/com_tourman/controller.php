@@ -30,6 +30,7 @@ class TourmanController extends BaseController
         $this -> registerTask('get-closest-tournaments', 'getClosestTournaments');
 
         $this -> registerTask('set-match-score', 'setMatchScore');
+        $this -> registerTask('finalize-match', 'finalizeMatch');
         $this -> registerTask('suggest-user', 'findUser');
         $this -> registerTask('register-players-to-stage', 'registerPlayersToStage');
         $this -> registerTask('unregister-player-from-stage', 'unregisterPlayerFromStage');
@@ -72,6 +73,12 @@ class TourmanController extends BaseController
         $post = $this -> getPostData();
 
         return $this -> sendResponse($this -> getModel() -> setMatchScore($post));
+    }
+
+    public function finalizeMatch() {
+        $post = $this -> getPostData();
+
+        return $this -> sendResponse($this -> getModel() -> finalizeMatch($post['matchId']));
     }
 
     public function findUser() {
