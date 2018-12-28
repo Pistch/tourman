@@ -174,13 +174,9 @@ class TourmanModelTourman extends ListModel
         );
 
         if ($stage['net_type'] === '2-0') {
-            $resultsRecord = R::dispense('result');
+            $place = $placeMap[(int)$stage['net_size'] > 32 ? 64 : 32][log((int)$stage['net_size'], 2) - $phaseNo - 1];
 
-            $resultsRecord['tournament_stage_id'] = $match['stage_id'];
-            $resultsRecord['user_id'] = $loserId;
-            $resultsRecord['place'] = $placeMap[(int)$stage['net_size'] > 32 ? 64 : 32][log((int)$stage['net_size'], 2) - $phaseNo - 1];
-            R::store($resultsRecord);
-
+            $this -> makeResultRecord($match['stage_id'], $loserId, $place);
             return;
         } else {
             //todo
@@ -190,12 +186,7 @@ class TourmanModelTourman extends ListModel
     private function proceedWinner($winnerId, $match, $stage, $phaseType, $phaseNo, $isLastPhase) {
         if ($stage['net_type'] === '2-0') {
             if ($isLastPhase) {
-                $resultsRecord = R::dispense('result');
-
-                $resultsRecord['tournament_stage_id'] = $match['stage_id'];
-                $resultsRecord['user_id'] = $winnerId;
-                $resultsRecord['place'] = 1;
-                R::store($resultsRecord);
+                $this -> makeResultRecord($match['stage_id'], $winnerId, 1);
                 return;
             } else {
                 $newPhase = $phaseType . (string)($phaseNo + 1);
@@ -212,6 +203,23 @@ class TourmanModelTourman extends ListModel
             }
         } else {
             //todo
+        }
+    }
+
+    private function makeResultRecord($stageId, $userId, $place) {
+        $existingRecord = R::findOne('result', ' tournament_stage_id = ? AND user_id = ? ', [$stageId, $userId]);
+
+        if ($existingRecord === null) {
+            $resultsRecord = R::dispense('result');
+
+            $resultsRecord['tournament_stage_id'] = $stageId;
+            $resultsRecord['user_id'] = $userId;
+            $resultsRecord['place'] = $place;
+            R::store($resultsRecord);
+        } else {
+            $existingRecord['place'] = $place;
+
+            R::store($existingRecord);
         }
     }
 
