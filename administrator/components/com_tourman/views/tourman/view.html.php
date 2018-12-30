@@ -60,6 +60,7 @@ class TourmanViewTourman extends HtmlView
 
 		$this->tournaments = $this->get('Tournaments');
 
+
 		// Display it all
 		return parent::display($tpl);
 	}

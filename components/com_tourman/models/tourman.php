@@ -40,8 +40,10 @@ class TourmanModelTourman extends ListModel
 
     public function getTournamentStage($stageID, $short = false) {
         $stage = R::load('stage', $stageID);
+
         if (!$short) {
             $stage['games'] = $this->getStageGames($stageID);
+            $stage['results'] = R::findAll('result', ' tournament_stage_id = ? ', [$stageID]);
         }
 
         return $stage;

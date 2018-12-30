@@ -13,10 +13,8 @@ use Joomla\CMS\Layout\FileLayout;
 
 defined('_JEXEC') or die;
 
-HTMLHelper::_('script', 'com_tourman/script.js', array('version' => 'auto', 'relative' => true));
-HTMLHelper::_('stylesheet', 'com_tourman/style.css', array('version' => 'auto', 'relative' => true));
+//HTMLHelper::_('script', 'com_tourman/script.js', array('version' => 'auto', 'relative' => true));
+//HTMLHelper::_('stylesheet', 'com_tourman/style.css', array('version' => 'auto', 'relative' => true));
 
 $layout = new FileLayout('tourman.page');
-$data = array();
-$data['text'] = 'Hello Joomla!';
 echo $layout->render($data);
