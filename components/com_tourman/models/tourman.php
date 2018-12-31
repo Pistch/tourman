@@ -29,13 +29,13 @@ class TourmanModelTourman extends ListModel
     public function getTournament($id) {
         $tournament = R::load('tournament', $id);
 
-        $tournament['stages'] = $this->getTournamentStages($id);
+        $tournament['stages'] = $this -> getTournamentStages($id);
 
         return $tournament;
     }
 
     public function getTournamentStages($tournamentID) {
-        return R::find('stage', ' tournament_id = ? AND NOT status = `1`', [ $tournamentID ]);
+        return R::find('stage', ' tournament_id = ? ', [ $tournamentID ]);
     }
 
     public function getTournamentStage($stageID, $short = false) {

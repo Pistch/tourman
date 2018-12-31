@@ -13,6 +13,6 @@ defined('_JEXEC') or die;
 ?>
 <div id="j-main-container" class="span10">
     <div id="app"></div>
-    <script src="http://localhost:8080/dist/build.js"></script>
-<!--    <script src="/media/com_tourman/js/adm_build.js"></script>-->
+<!--    <script src="http://localhost:8080/dist/build.js"></script>-->
+    <script src="/media/com_tourman/js/adm_build.js"></script>
 </div>
