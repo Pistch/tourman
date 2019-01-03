@@ -28,6 +28,7 @@ class TourmanController extends BaseController
         $this -> registerTask('get-stage', 'getStage');
         $this -> registerTask('get-players-tournaments', 'getPlayersTournaments');
         $this -> registerTask('get-closest-tournaments', 'getClosestTournaments');
+        $this -> registerTask('get-ratings', 'getRatings');
 
         $this -> registerTask('set-match-score', 'setMatchScore');
         $this -> registerTask('finalize-match', 'finalizeMatch');
@@ -38,6 +39,10 @@ class TourmanController extends BaseController
         $this -> registerTask('make-new-tournament', 'makeNewTournament');
         $this -> registerTask('make-new-tournament-stage', 'makeNewTournamentStage');
         $this -> registerTask('close-registration', 'closeRegistration');
+        $this -> registerTask('close-stage', 'closeStage');
+
+        $this -> registerTask('recalculate-rating-by-period', 'recalculatePeriodRating');
+        $this -> registerTask('recalculate-rating-by-tournament', 'closeStage');
     }
 
     public function getModel($name = 'Tourman', $prefix = 'TourmanModel', $config = array()) {
@@ -63,6 +68,14 @@ class TourmanController extends BaseController
         $plId = JUri::getInstance()->getVar('player');
 
         return $this -> sendResponse($this -> getModel() -> getPlayersTournaments($plId));
+    }
+
+    public function getRatings() {
+        $tournamentId = JUri::getInstance()->getVar('tournamentId') || 0;
+        $offset = JUri::getInstance()->getVar('offset') || 0;
+        $limit = JUri::getInstance()->getVar('limit') || 30;
+
+        return $this -> sendResponse($this -> getModel() -> getRatings($limit, $offset, $tournamentId));
     }
 
     public function getClosestTournaments() {
@@ -115,6 +128,18 @@ class TourmanController extends BaseController
         $post = $this -> getPostData();
 
         return $this -> sendResponse($this -> getModel() -> closeRegistration($post['stageId']));
+    }
+
+    public function closeStage() {
+        $post = $this -> getPostData();
+
+        return $this -> sendResponse($this -> getModel() -> closeStage($post['stageId']));
+    }
+
+    public function recalculatePeriodRating() {
+        $post = $this -> getPostData();
+
+        return $this -> sendResponse($this -> getModel() -> recalculatePeriodRating($post['from'], $post['to']));
     }
 
 

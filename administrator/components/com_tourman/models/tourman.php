@@ -29,7 +29,7 @@ class TourmanModelTourman extends ListModel
     public function getTournament($id) {
         $tournament = R::load('tournament', $id);
 
-        $tournament['stages'] = $this->getTournamentStages($id);
+        $tournament['stages'] = $this -> getTournamentStages($id);
 
         return $tournament;
     }
@@ -49,7 +49,7 @@ class TourmanModelTourman extends ListModel
     }
 
     public function getStageGames($stage) {
-        $games = R::find('games', ' stage_id = ? ORDER BY `phase_placement` ASC ', [ $stage['id'] ]);
+        $games = R::find('game', ' stage_id = ? ORDER BY `phase_placement` ASC ', [ $stage['id'] ]);
 
         foreach ($games as $key => $game) {
             $games[$key]['user1'] = $this -> getUser($game['pl1_id']);
@@ -67,11 +67,65 @@ class TourmanModelTourman extends ListModel
 
     public function getUser($userID) {
         $fullUser = R::load('user', $userID);
+
         return $fullUser['name'];
     }
 
-    private function getFullUser($userID) {
-        return R::load('user', $userID);
+    public function getFullUser($userID) {
+        $user = R::load('user', $userID);
+
+        $user['rating'] = $this -> getUserRating($userID);
+
+        return $user;
+    }
+
+    public function getRatings($limit = 30, $offset = 0, $tournamentId = 0) {
+        if ($tournamentId === 0) {
+            $ratings = R::findAll('rating', ' LIMIT ?, ? ORDER BY points DESC ', [$offset, $offset + $limit]);
+        } else {
+            $ratings = R::findAll('rating', ' tournament_stage_id = ? LIMIT ?, ? ORDER BY points DESC ', [$tournamentId, $offset, $offset + $limit]);
+        }
+
+        $users = [];
+
+        foreach ($ratings as $key => $rating) {
+            $users[] = [
+                "name" => $this -> getUser($rating['user_id']),
+                "points" => $rating['points']
+            ];
+        }
+
+        return $users;
+    }
+
+    public function getUsersRatings($users) {
+        $result = [];
+
+        foreach ($users as $key => $userId) {
+            $result[] = [
+                "id" => $userId,
+                "name" => $this -> getUser($userId),
+                "points" => $this -> getUserRating($userId)
+            ];
+        }
+
+        function sortPlayersByRating($u1, $u2) {
+            return (int)$u1['points'] - (int)$u2['points'];
+        }
+
+        usort($result, 'sortPlayersByRating');
+
+        return $result;
+    }
+
+    private function getUserRating($userId) {
+        $rating = R::findOne('rating', ' user_id = ? ', [$userId]);
+
+        if ($rating === null) {
+            return 0;
+        }
+
+        return $rating['points'];
     }
 
     public function findUser($searchString) {
@@ -93,7 +147,7 @@ class TourmanModelTourman extends ListModel
         $pl1Score = $input['pl1_score'];
         $pl2Score = $input['pl2_score'];
 
-        $match = R::load('games', (int)$matchId);
+        $match = R::load('game', (int)$matchId);
 
         $match -> pl1_score = (int)$pl1Score;
         $match -> pl2_score = (int)$pl2Score;
@@ -104,7 +158,7 @@ class TourmanModelTourman extends ListModel
     }
 
     public function finalizeMatch($matchId) {
-        $match = R::load('games', (int)$matchId);
+        $match = R::load('game', (int)$matchId);
 
         if (
             ((int)$match['pl1_id'] === 0 && (int)$match['pl2_id'] === 0) ||
@@ -121,7 +175,7 @@ class TourmanModelTourman extends ListModel
         $phaseType = substr($match['phase'], 0, 1);
         $phaseNo = (int)substr($match['phase'], 1, 1);
         $nextPhaseNo = $phaseNo + 1;
-        $isLastPhase = R::findOne('games', ' stage_id = ? AND phase = ? ', [$match['stage_id'], "$phaseType$nextPhaseNo"]) === null;
+        $isLastPhase = R::findOne('game', ' stage_id = ? AND phase = ? ', [$match['stage_id'], "$phaseType$nextPhaseNo"]) === null;
 
         $stage = R::load('stage', $match['stage_id']);
 
@@ -166,7 +220,7 @@ class TourmanModelTourman extends ListModel
                     $phasePlacement = $phaseNo === 0
                         ? ($isAllPairsFilledWithOneParticipant ? (int)$match['phase_placement'] - ((int)$stage['net_size'] / 4) : $match['phase_placement'])
                         : $match['phase_placement'];
-                    $newGame = R::findOne('games', ' stage_id = ? AND phase = ? AND phase_placement = ? ', [$match['stage_id'], $newPhase, $phasePlacement]);
+                    $newGame = R::findOne('game', ' stage_id = ? AND phase = ? AND phase_placement = ? ', [$match['stage_id'], $newPhase, $phasePlacement]);
 
                     if ($phaseNo === 0) {
                         if ($isAllPairsFilledWithOneParticipant) {
@@ -205,7 +259,7 @@ class TourmanModelTourman extends ListModel
             } else {
                 $newPhase = $phaseType . (string)($phaseNo + 1);
                 $phasePlacement = (int)$match['phase_placement'] / 2;
-                $newGame = R::findOne('games', ' stage_id = ? AND phase = ? AND phase_placement = ? ', [$match['stage_id'], $newPhase, floor($phasePlacement)]);
+                $newGame = R::findOne('game', ' stage_id = ? AND phase = ? AND phase_placement = ? ', [$match['stage_id'], $newPhase, floor($phasePlacement)]);
 
                 if ((int)$match['phase_placement'] % 2 === 0) {
                     $newGame -> pl1_id = $winnerId;
@@ -220,7 +274,7 @@ class TourmanModelTourman extends ListModel
                 switch ($phaseType) {
                     case 'w':
                         $newPhase = 'o0';
-                        $newGame = R::findOne('games', ' stage_id = ? AND phase = ? AND phase_placement = ? ', [$match['stage_id'], $newPhase, $match['phase_placement']]);
+                        $newGame = R::findOne('game', ' stage_id = ? AND phase = ? AND phase_placement = ? ', [$match['stage_id'], $newPhase, $match['phase_placement']]);
 
                         $newGame -> pl1_id = $winnerId;
 
@@ -228,7 +282,7 @@ class TourmanModelTourman extends ListModel
                         break;
                     case 'l':
                         $newPhase = 'o0';
-                        $newGame = R::findOne('games', ' stage_id = ? AND phase = ? AND phase_placement = ? ', [$match['stage_id'], $newPhase, $match['phase_placement']]);
+                        $newGame = R::findOne('game', ' stage_id = ? AND phase = ? AND phase_placement = ? ', [$match['stage_id'], $newPhase, $match['phase_placement']]);
 
                         $newGame -> pl2_id = $winnerId;
 
@@ -243,7 +297,7 @@ class TourmanModelTourman extends ListModel
                 $phasePlacement = ($phaseType === 'l' && $phaseNo % 2 === 0)
                     ? (int)$match['phase_placement']
                     : floor((int)$match['phase_placement'] / 2);
-                $newGame = R::findOne('games', ' stage_id = ? AND phase = ? AND phase_placement = ? ', [$match['stage_id'], $newPhase, $phasePlacement]);
+                $newGame = R::findOne('game', ' stage_id = ? AND phase = ? AND phase_placement = ? ', [$match['stage_id'], $newPhase, $phasePlacement]);
 
                 if ($phaseType === 'l' && $phaseNo % 2 === 0) {
                     $newGame -> pl2_id = $winnerId;
@@ -293,6 +347,26 @@ class TourmanModelTourman extends ListModel
         return($tournament);
     }
 
+    public function saveTournamentChanges($data) {
+        $tournament = R::load('tournament', $data['id']);
+
+        if (!$tournament) {
+            return $this -> makeNewTournament($data);
+        }
+
+        $tournament -> title = $data['title'];
+        $tournament -> description = $data['description'];
+        $tournament -> start_date = $data['start_date'];
+        $tournament -> end_date = $data['end_date'];
+        $tournament -> is_rating = $data['is_rating'];
+        $tournament -> net_type = $data['net_type'];
+        $tournament -> net_size = $data['net_size'];
+        $tournament -> reglament = $data['reglament'];
+
+        R::store($tournament);
+        return($tournament);
+    }
+
     public function makeNewTournamentStage($data) {
         $stage = R::dispense('stage');
 
@@ -324,7 +398,7 @@ class TourmanModelTourman extends ListModel
     private function buildNet_2_0($stageId, $size) {
         for ($stageNetSize = $size, $phaseNo = 0; $stageNetSize > 1; $phaseNo++) {
             for ($i = 0; $i < $stageNetSize; $i += 2) {
-                $game = R::dispense('games');
+                $game = R::dispense('game');
 
                 $game -> pl1_id = 0;
                 $game -> pl2_id = 0;
@@ -344,7 +418,7 @@ class TourmanModelTourman extends ListModel
     private function buildNet_2_1($stageId, $size) {
         // Виннеры
         for ($i = 0; $i < $size; $i += 2) {
-            $game = R::dispense('games');
+            $game = R::dispense('game');
 
             $game -> pl1_id = 0;
             $game -> pl2_id = 0;
@@ -358,7 +432,7 @@ class TourmanModelTourman extends ListModel
         }
 
         for ($i = 0; $i < $size / 2; $i += 2) {
-            $game = R::dispense('games');
+            $game = R::dispense('game');
 
             $game -> pl1_id = 0;
             $game -> pl2_id = 0;
@@ -372,7 +446,7 @@ class TourmanModelTourman extends ListModel
         }
 
         for ($i = 0; $i < $size / 4; $i += 2) {
-            $game = R::dispense('games');
+            $game = R::dispense('game');
 
             $game -> pl1_id = 0;
             $game -> pl2_id = 0;
@@ -387,7 +461,7 @@ class TourmanModelTourman extends ListModel
 
         // Лузеры
         for ($i = 0; $i < $size / 2; $i += 2) {
-            $game = R::dispense('games');
+            $game = R::dispense('game');
 
             $game -> pl1_id = 0;
             $game -> pl2_id = 0;
@@ -401,7 +475,7 @@ class TourmanModelTourman extends ListModel
         }
 
         for ($i = 0; $i < $size / 2; $i += 2) {
-            $game = R::dispense('games');
+            $game = R::dispense('game');
 
             $game -> pl1_id = 0;
             $game -> pl2_id = 0;
@@ -415,7 +489,7 @@ class TourmanModelTourman extends ListModel
         }
 
         for ($i = 0; $i < $size / 4; $i += 2) {
-            $game = R::dispense('games');
+            $game = R::dispense('game');
 
             $game -> pl1_id = 0;
             $game -> pl2_id = 0;
@@ -429,7 +503,7 @@ class TourmanModelTourman extends ListModel
         }
 
         for ($i = 0; $i < $size / 4; $i += 2) {
-            $game = R::dispense('games');
+            $game = R::dispense('game');
 
             $game -> pl1_id = 0;
             $game -> pl2_id = 0;
@@ -445,7 +519,7 @@ class TourmanModelTourman extends ListModel
         // Олимпийка
         for ($stageNetSize = $size / 4, $phaseNo = 0; $stageNetSize > 1; $phaseNo++) {
             for ($i = 0; $i < $stageNetSize; $i += 2) {
-                $game = R::dispense('games');
+                $game = R::dispense('game');
 
                 $game -> pl1_id = 0;
                 $game -> pl2_id = 0;
@@ -552,7 +626,22 @@ class TourmanModelTourman extends ListModel
             $playerIds[] = $registration['player_id'];
         }
 
+        $players = $this -> getUsersRatings($playerIds);
+
+        $playerIds = [];
+        $preservedPlayerIds = [];
+
+        for ($i = 0; $i < count($players); $i++) {
+            if (count($preservedPlayerIds) < 8) {
+                $preservedPlayerIds[] = $players[$i]['id'];
+            } else {
+                $playerIds[] = $players[$i]['id'];
+            }
+        }
+
         shuffle($playerIds);
+
+        $playerIds = array_merge($preservedPlayerIds, $playerIds);
 
         for ($i = 0; $i < $gamesQuantity; $i++) {
             $player1Id = 0;
@@ -566,7 +655,7 @@ class TourmanModelTourman extends ListModel
                 $player2Id = $playerIds[$i + $gamesQuantity];
             }
 
-            $game = R::findOne('games', ' phase = "w0" AND phase_placement = ? AND stage_id = ?', [$i, $stageId]);
+            $game = R::findOne('game', ' phase = "w0" AND phase_placement = ? AND stage_id = ?', [$i, $stageId]);
 
             $game['pl1_id'] = $player1Id;
             $game['pl2_id'] = $player2Id;
@@ -579,5 +668,106 @@ class TourmanModelTourman extends ListModel
         }
 
         R::trashAll($registrations);
+    }
+
+    public function closeStage($stageId) {
+        $stage = R::load('stage', $stageId);
+
+        if(!$stage) {
+            return;
+        }
+
+        $this -> calculateStageRatings($stageId, $stage['net_size']);
+
+        $stage['status'] = 3;
+
+        R::store($stage);
+
+        return $stage;
+    }
+
+    public function recalculatePeriodRating($from, $to) {
+        $stages = R::findAll('stage', ' start_date > ? AND end_date < ? ', [$from, $to]);
+
+        foreach ($stages as $key => $stage) {
+            $this -> calculateStageRatings($stage['id'], $stage['net_size']);
+        }
+    }
+
+    public function calculateTournamentRating($tournamentId) {
+        $stages = R::findAll('stage', ' tournament_id = ? ', [$tournamentId]);
+
+        foreach ($stages as $key => $stage) {
+            $this -> calculateStageRatings($stage['id'], $stage['net_size']);
+        }
+    }
+
+    private function calculateStageRatings($stageId, $netSize) {
+        $stage = R::load('stage', $stageId);
+
+        if (!$stage) {
+            return;
+        }
+
+        $tournament = $this -> getTournament($stage['tournament_id']);
+
+        if ((int)$tournament['is_rating'] === 0) {
+            return;
+        }
+
+        $existingRecords = R::findAll('result', ' tournament_stage_id = ? ', [$stageId]);
+
+        $scoresMap = json_decode(file_get_contents(__DIR__ . '/nehodyachka_points.json'), true)[$netSize];
+
+        foreach ($existingRecords as $key => $result) {
+            if (isset($scoresMap[$result['place']])) {
+                $result['points'] = $scoresMap[$result['place']];
+            } else {
+                $placesAvailable = [];
+
+                foreach ($scoresMap as $place => $points) {
+                    $placesAvailable[] = $place;
+                }
+
+                sort($placesAvailable, SORT_NUMERIC);
+
+                for ($i = 0; $i < count($placesAvailable); $i++) {
+                    if (
+                        $i === count($placesAvailable) - 1 ||
+                        $placesAvailable[$i] === $result['place'] ||
+                        ($placesAvailable[$i] < $result['place'] && $placesAvailable[$i + 1] > $result['place'])
+                    ) {
+                        $result['place'] = $placesAvailable[$i];
+                        $result['points'] = $scoresMap[$result['place']];
+                        break;
+                    }
+                }
+            }
+
+            R::store($result);
+
+            $this -> recalculateUserPoints($result['user_id'], $stage['tournament_id']);
+        }
+    }
+
+    private function recalculateUserPoints($userId, $tournamentId) {
+        $rating = R::findOne('rating', ' user_id = ? AND tournament_id = ? ', [$userId, $tournamentId]);
+
+        if ($rating === null) {
+            $rating = R::dispense('rating');
+
+            $rating['user_id'] = $userId;
+            $rating['tournament_id'] = $tournamentId;
+        }
+
+        $resultingScore = R::getAssoc('SELECT SUM(points) FROM result WHERE user_id = ? AND tournament_stage_id IN (SELECT id FROM stage WHERE tournament_id = ?)', [$userId, $tournamentId]);
+
+        foreach ($resultingScore as $value) {
+            $rating['points'] = $value;
+        }
+
+        R::store($rating);
+
+        return $rating;
     }
 }
