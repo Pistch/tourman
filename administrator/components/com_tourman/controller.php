@@ -43,6 +43,8 @@ class TourmanController extends BaseController
 
         $this -> registerTask('recalculate-rating-by-period', 'recalculatePeriodRating');
         $this -> registerTask('recalculate-rating-by-tournament', 'closeStage');
+
+        $this -> registerTask('set-player-stage-handicap', 'setPlayerStageHandicap');
     }
 
     public function getModel($name = 'Tourman', $prefix = 'TourmanModel', $config = array()) {
@@ -140,6 +142,12 @@ class TourmanController extends BaseController
         $post = $this -> getPostData();
 
         return $this -> sendResponse($this -> getModel() -> recalculatePeriodRating($post['from'], $post['to']));
+    }
+
+    public function setPlayerStageHandicap() {
+        $post = $this -> getPostData();
+
+        return $this -> sendResponse($this -> getModel() -> setPlayerStageHandicap($post['player_id'], $post['tournament_id'], $post['stage_id'], $post['value']));
     }
 
 

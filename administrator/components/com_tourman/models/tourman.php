@@ -20,8 +20,7 @@ require_once(realpath(__DIR__ . '/../helpers/db.php'));
  * @package  tourman
  * @since    1.0
  */
-class TourmanModelTourman extends ListModel
-{
+class TourmanModelTourman extends ListModel {
     public function getTournaments() {
         return R::find('tournament', 'ORDER BY id DESC');
     }
@@ -53,7 +52,9 @@ class TourmanModelTourman extends ListModel
 
         foreach ($games as $key => $game) {
             $games[$key]['user1'] = $this -> getUser($game['pl1_id']);
+            $games[$key]['user1_handicap'] = $this -> getUserStageHandicap($game['pl1_id'], $stage['id']);
             $games[$key]['user2'] = $this -> getUser($game['pl2_id']);
+            $games[$key]['user2_handicap'] = $this -> getUserStageHandicap($game['pl2_id'], $stage['id']);
         }
 
         $stage['games'] = $games;
@@ -69,6 +70,16 @@ class TourmanModelTourman extends ListModel
         $fullUser = R::load('user', $userID);
 
         return $fullUser['name'];
+    }
+
+    private function getUserStageHandicap($playerId, $stageId) {
+        $handicap = R::findOne('stagehandicap', ' stage_id = ? AND player_id = ? ', [$stageId, $playerId]);
+
+        if ($handicap && isset($handicap['value'])) {
+            return $handicap['value'];
+        }
+
+        return 0;
     }
 
     public function getFullUser($userID) {
@@ -604,7 +615,16 @@ class TourmanModelTourman extends ListModel
         $registeredUsers = [];
 
         foreach ($registeredIds as $key => $registration) {
-            $registeredUsers[] = $this -> getFullUser((int)$registration['player_id']);
+            $playerId = (int)$registration['player_id'];
+
+            $user = $this -> getFullUser($playerId);
+            $handicap = R::findOne('stagehandicap', ' stage_id = ? AND player_id = ? ', [$stageId, $playerId]);
+
+            if ($handicap && isset($handicap['value'])) {
+                $user -> handicap = $handicap['value'];
+            }
+
+            $registeredUsers[] = $user;
         }
 
         return $registeredUsers;
@@ -635,11 +655,11 @@ class TourmanModelTourman extends ListModel
                 $registration -> player_id = $playerId;
 
                 R::store($registration);
+                $this -> setPlayerStageHandicap($playerId, $stage['tournament_id'], $stageId);
 
                 return true;
             }
 
-            $this -> setPlayerStageHandicap($playerId, $stage['tournament_id'], $stageId, null);
         }
     }
 
@@ -838,5 +858,46 @@ class TourmanModelTourman extends ListModel
         R::store($rating);
 
         return $rating;
+    }
+
+    public function setPlayerStageHandicap($playerId, $tournamentId, $stageId, $value = null) {
+        $tournamentHandicap = R::findOne('tournamenthandicap', ' tournament_id = ? AND player_id = ? ', [$tournamentId, $playerId]);
+
+        if (!$tournamentHandicap) {
+            $tournamentHandicap = R::dispense('tournamenthandicap');
+
+            $tournamentHandicap -> tournament_id = $tournamentId;
+            $tournamentHandicap -> player_id = $playerId;
+        }
+
+        $stageHandicap = R::findOne('stagehandicap', ' stage_id = ? AND player_id = ? ', [$stageId, $playerId]);
+
+        if (!$stageHandicap) {
+            $stageHandicap = R::dispense('stagehandicap');
+
+            $stageHandicap -> stage_id = $stageId;
+            $stageHandicap -> player_id = $playerId;
+        }
+
+        if ($value !== null) {
+            $tournamentHandicap -> value = $value;
+            R::store($tournamentHandicap);
+
+            $stageHandicap -> value = $value;
+            R::store($stageHandicap);
+        } else {
+            if ($tournamentHandicap['value']) {
+                $stageHandicap -> value = $tournamentHandicap['value'];
+                R::store($stageHandicap);
+            } else {
+                $tournamentHandicap -> value = 0;
+                R::store($tournamentHandicap);
+
+                $stageHandicap -> value = 0;
+                R::store($stageHandicap);
+            }
+        }
+
+        return $this -> getRegisteredPlayers($stageId);
     }
 }

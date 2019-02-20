@@ -65,7 +65,9 @@ class TourmanModelTourman extends ListModel {
 
         foreach ($games as $key => $game) {
             $games[$key]['user1'] = $this -> getUser($game['pl1_id']);
+            $games[$key]['user1_handicap'] = $this -> getUserStageHandicap($game['pl1_id'], $stageID);
             $games[$key]['user2'] = $this -> getUser($game['pl2_id']);
+            $games[$key]['user2_handicap'] = $this -> getUserStageHandicap($game['pl2_id'], $stageID);
         }
 
         return $games;
@@ -88,6 +90,16 @@ class TourmanModelTourman extends ListModel {
     public function getUser($userID) {
         $fullUser = R::load('user', $userID);
         return $fullUser['name'];
+    }
+
+    private function getUserStageHandicap($playerId, $stageId) {
+        $handicap = R::findOne('stagehandicap', ' stage_id = ? AND player_id = ? ', [$stageId, $playerId]);
+
+        if ($handicap && isset($handicap['value'])) {
+            return $handicap['value'];
+        }
+
+        return 0;
     }
 
     public function getPlayersTournaments($userID) {
