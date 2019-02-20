@@ -74,8 +74,6 @@ class TourmanModelTourman extends ListModel
     public function getFullUser($userID) {
         $user = R::load('user', $userID);
 
-        $user['rating'] = $this -> getUserRating($userID);
-
         return $user;
     }
 
@@ -98,19 +96,19 @@ class TourmanModelTourman extends ListModel
         return $users;
     }
 
-    public function getUsersRatings($users) {
+    public function getUsersRatings($users, $tournamentId = null) {
         $result = [];
 
         foreach ($users as $key => $userId) {
             $result[] = [
                 "id" => $userId,
                 "name" => $this -> getUser($userId),
-                "points" => $this -> getUserRating($userId)
+                "points" => $this -> getUserRating($userId, $tournamentId)
             ];
         }
 
         function sortPlayersByRating($u1, $u2) {
-            return (int)$u1['points'] - (int)$u2['points'];
+            return (int)$u2['points'] - (int)$u1['points'];
         }
 
         usort($result, 'sortPlayersByRating');
@@ -118,8 +116,12 @@ class TourmanModelTourman extends ListModel
         return $result;
     }
 
-    private function getUserRating($userId) {
-        $rating = R::findOne('rating', ' user_id = ? ', [$userId]);
+    private function getUserRating($userId, $tournamentId) {
+        if ($tournamentId) {
+            $rating = R::findOne('rating', ' user_id = ? AND tournament_id = ? ', [$userId, $tournamentId]);
+        } else {
+            $rating = R::findOne('rating', ' user_id = ? ', [$userId]);
+        }
 
         if ($rating === null) {
             return 0;
@@ -213,21 +215,80 @@ class TourmanModelTourman extends ListModel
         } else {
             switch ($phaseType) {
                 case 'w':
+                    // Падаем только в 1, 2 и 4 раунды сетки проигравший, 3й играется среди игроков, упавших ранее
                     $targetPhaseMap = [0, 1, 3];
 
                     $newPhase = 'l' . (string)($targetPhaseMap[$phaseNo]);
-                    $isAllPairsFilledWithOneParticipant = (int)$match['phase_placement'] >= ((int)$stage['net_size'] / 4);
-                    $phasePlacement = $phaseNo === 0
-                        ? ($isAllPairsFilledWithOneParticipant ? (int)$match['phase_placement'] - ((int)$stage['net_size'] / 4) : $match['phase_placement'])
-                        : $match['phase_placement'];
+
+                    // Определяем игру, в которую падает проигравший, для каждого раунда свой алгоритм
+                    switch ($phaseNo) {
+                        case 0:
+                            // Тут всё просто, каждый падает в свою дырку
+                            $fromPhasePlacement = (int)$match['phase_placement'];
+                            if ($fromPhasePlacement % 2 === 0) {
+                                $phasePlacement = $fromPhasePlacement / 2;
+                                $targetPlayerSlot = 1;
+                            } else {
+                                $phasePlacement = ($fromPhasePlacement - 1) / 2;
+                                $targetPlayerSlot = 2;
+                            }
+
+                            break;
+
+                        case 1:
+                            // Здесь каждый должен упасть крест-накрест со своим положением в верхней сетке
+                            $phasePlacement = (int)$stage['net_size'] / 4 - (int)$match['phase_placement'] - 1;
+
+                            break;
+
+                        case 2:
+                            // В сетке на 16 меняем местами
+                            if ((int)$stage['net_size'] === 16) {
+                                $phasePlacement = (int)$match['phase_placement'] === 1 ? 0 : 1;
+                                break;
+                            // В сетке на 32 перетасовываем пары
+                            } elseif ((int)$stage['net_size'] === 32) {
+                                $wasPhasePlacement = (int)$match['phase_placement'];
+                                $phasePlacement = $wasPhasePlacement % 2 === 0
+                                    ? $wasPhasePlacement + 1
+                                    : $wasPhasePlacement - 1;
+                                break;
+                            }
+
+                            // А здесь механизм определения довольно сложен
+                            // Сначала нужно разбить на четвёрки
+                            // Затем крест-накрест поменять местами пары в четвёрке
+                            // Получиться должно так:
+                            // 1 -> 3
+                            // 2 -> 4
+                            // 3 -> 1
+                            // 4 -> 2
+                            // 5 -> 7
+                            // 6 -> 8
+                            // 7 -> 5
+                            // 8 -> 6
+                            $fromPhasePlacement = (int)$match['phase_placement'];
+                            $fourNumber = floor($fromPhasePlacement / 4);
+                            $gameNumberInFour = $fromPhasePlacement % 4;
+
+                            $targetGameNumberInFour = $gameNumberInFour + 2 > 3
+                                ? $gameNumberInFour - 2
+                                : $gameNumberInFour + 2;
+
+                            $phasePlacement = $fourNumber * 4 + $targetGameNumberInFour;
+
+                            break;
+
+                        default:
+                            $match['phase_placement'];
+                    }
+
                     $newGame = R::findOne('game', ' stage_id = ? AND phase = ? AND phase_placement = ? ', [$match['stage_id'], $newPhase, $phasePlacement]);
 
                     if ($phaseNo === 0) {
-                        if ($isAllPairsFilledWithOneParticipant) {
-                            $newGame -> pl2_id = $loserId;
-                        } else {
-                            $newGame -> pl1_id = $loserId;
-                        }
+                        // Специфика первого раунда сетки проигравших, нужно понимать, в верхний или нижний слот в игре
+                        // следует определить игрока
+                        $newGame['pl' . $targetPlayerSlot . '_id'] = $loserId;
                     } else {
                         $newGame -> pl1_id = $loserId;
                     }
@@ -236,6 +297,8 @@ class TourmanModelTourman extends ListModel
 
                     break;
                 case 'l':
+                    // Высчитанные значения доли игроков, прошедших дальше того, для которого в данный момент определяем
+                    // пул занятых мест, при сетке до двух поражений с выходом в олимпийку
                     $placeMupltiplierMap = [ 3/4, 1/2, 3/8, 1/4 ];
 
                     $place = (int)$stage['net_size'] * $placeMupltiplierMap[$phaseNo] + 1;
@@ -336,8 +399,8 @@ class TourmanModelTourman extends ListModel
 
         $tournament -> title = $data['title'];
         $tournament -> description = $data['description'];
-        $tournament -> start_date = $data['start_date'];
-        $tournament -> end_date = $data['end_date'];
+        $tournament -> start_date = R::isoDate($data['start_date']);
+        $tournament -> end_date = R::isoDate($data['end_date']);
         $tournament -> is_rating = $data['is_rating'];
         $tournament -> net_type = $data['net_type'];
         $tournament -> net_size = $data['net_size'];
@@ -374,8 +437,8 @@ class TourmanModelTourman extends ListModel
         $stage -> net_size = $data['net_size'];
         $stage -> net_type = $data['net_type'];
         $stage -> tournament_id = $data['tournament_id'];
-        $stage -> start_date = $data['start_date'];
-        $stage -> end_date = $data['end_date'];
+        $stage -> start_date = R::isoDateTime($data['start_date']);
+        $stage -> end_date = R::isoDate($data['end_date']);
         $stage -> status = 1;
 
         $stageId = R::store($stage);
@@ -541,7 +604,7 @@ class TourmanModelTourman extends ListModel
         $registeredUsers = [];
 
         foreach ($registeredIds as $key => $registration) {
-            $registeredUsers[] = $this -> getFullUser((int) $registration['player_id']);
+            $registeredUsers[] = $this -> getFullUser((int)$registration['player_id']);
         }
 
         return $registeredUsers;
@@ -575,6 +638,8 @@ class TourmanModelTourman extends ListModel
 
                 return true;
             }
+
+            $this -> setPlayerStageHandicap($playerId, $stage['tournament_id'], $stageId, null);
         }
     }
 
@@ -608,7 +673,7 @@ class TourmanModelTourman extends ListModel
         }
 
         if (isset($stage['id'])) {
-            $this -> seedPlayers($stageId, $gamesQuantity);
+            $this -> seedPlayers($stage, $gamesQuantity);
             $stage['status'] = 2;
 
             R::store($stage);
@@ -617,7 +682,8 @@ class TourmanModelTourman extends ListModel
         return $this -> getTournamentStage($stageId);
     }
 
-    private function seedPlayers($stageId, $gamesQuantity) {
+    private function seedPlayers($stage, $gamesQuantity) {
+        $stageId = $stage['id'];
         $registrations = R::findAll('registration', ' stage_id = ? ', [$stageId]);
 
         $playerIds = [];
@@ -626,10 +692,10 @@ class TourmanModelTourman extends ListModel
             $playerIds[] = $registration['player_id'];
         }
 
-        $players = $this -> getUsersRatings($playerIds);
+        $players = $this -> getUsersRatings($playerIds, $stage['tournament_id']);
 
-        $playerIds = [];
         $preservedPlayerIds = [];
+        $playerIds = [];
 
         for ($i = 0; $i < count($players); $i++) {
             if (count($preservedPlayerIds) < 8) {
@@ -643,26 +709,29 @@ class TourmanModelTourman extends ListModel
 
         $playerIds = array_merge($preservedPlayerIds, $playerIds);
 
-        for ($i = 0; $i < $gamesQuantity; $i++) {
-            $player1Id = 0;
-            $player2Id = 0;
+        $seedingSpots = json_decode(file_get_contents(__DIR__ . '/seeding_spots.json'), true)[$stage['net_size']];
 
-            if (isset($playerIds[$i])) {
-                $player1Id = $playerIds[$i];
+        for ($i = 0; $i < (int)$stage['net_size']; $i++) {
+            if (!isset($playerIds[$i])) {
+                break;
             }
 
-            if (isset($playerIds[$i + $gamesQuantity])) {
-                $player2Id = $playerIds[$i + $gamesQuantity];
-            }
+            $seedingPoint = $seedingSpots[$i] - 1;
 
-            $game = R::findOne('game', ' phase = "w0" AND phase_placement = ? AND stage_id = ?', [$i, $stageId]);
+            $targetGameSlot = $seedingPoint % 2;
+            $phasePlacement = ($seedingPoint - $targetGameSlot) / 2;
 
-            $game['pl1_id'] = $player1Id;
-            $game['pl2_id'] = $player2Id;
+            $game = R::findOne('game', ' phase = "w0" AND phase_placement = ? AND stage_id = ?', [$phasePlacement, $stageId]);
+
+            $game['pl' . ($targetGameSlot + 1) . '_id'] = $playerIds[$i];
 
             R::store($game);
+        }
 
-            if ($player1Id === 0 || $player2Id === 0) {
+        for ($i = 0; $i < (int)$stage['net_size'] / 2; $i++) {
+            $game = R::findOne('game', ' phase = "w0" AND phase_placement = ? AND stage_id = ?', [$i, $stageId]);
+
+            if ($game['pl1_id'] == 0 || $game['pl2_id'] == 0) {
                 $this -> finalizeMatch($game['id']);
             }
         }

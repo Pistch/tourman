@@ -13,7 +13,7 @@ use Joomla\CMS\Layout\FileLayout;
 
 defined('_JEXEC') or die;
 
-//HTMLHelper::_('script', 'com_tourman/script.js', array('version' => 'auto', 'relative' => true));
+//HTMLHelper::_('script', 'com_tourman/build.js', array('version' => 'auto', 'relative' => true));
 //HTMLHelper::_('stylesheet', 'com_tourman/style.css', array('version' => 'auto', 'relative' => true));
 
 $layout = new FileLayout('tourman.page');

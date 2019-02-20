@@ -29,8 +29,6 @@
 
 	<!-- Media files -->
 	<media folder="media/com_tourman" destination="com_tourman">
-		<folder>css</folder>
-		<folder>images</folder>
 		<folder>js</folder>
 	</media>
 

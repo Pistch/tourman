@@ -20,8 +20,7 @@ require_once(__DIR__ . '/db.php');
  * @package  tourman
  * @since    1.0
  */
-class TourmanModelTourman extends ListModel
-{
+class TourmanModelTourman extends ListModel {
     public function getTournaments() {
         return R::find('tournament', 'ORDER BY id DESC');
     }
@@ -34,6 +33,18 @@ class TourmanModelTourman extends ListModel
         return $tournament;
     }
 
+    public function getTournamentRating($id) {
+        $ratings = R::find('rating', ' tournament_id = ? ORDER BY `points` DESC ', [$id]);
+
+        $result = [];
+        foreach ($ratings as $key => $ratingRecord) {
+            $ratingRecord['user_name'] = $this -> getUser($ratingRecord['user_id']);
+            $result[] = $ratingRecord;
+        }
+
+        return $result;
+    }
+
     public function getTournamentStages($tournamentID) {
         return R::find('stage', ' tournament_id = ? ', [ $tournamentID ]);
     }
@@ -42,22 +53,36 @@ class TourmanModelTourman extends ListModel
         $stage = R::load('stage', $stageID);
 
         if (!$short) {
-            $stage['games'] = $this->getStageGames($stageID);
-            $stage['results'] = R::findAll('result', ' tournament_stage_id = ? ', [$stageID]);
+            $stage['games'] = $this -> getStageGames($stageID);
+            $stage['results'] = $this -> getStageResults($stageID);
         }
 
         return $stage;
     }
 
     public function getStageGames($stageID) {
-        $games = R::find('games', ' stage_id = ? ORDER BY `phase_placement` ASC ', [ $stageID ]);
+        $games = R::find('game', ' stage_id = ? ORDER BY phase_placement ASC ', [ $stageID ]);
 
         foreach ($games as $key => $game) {
-            $games[$key]['user1'] = $this->getUser($game['pl1_id']);
-            $games[$key]['user2'] = $this->getUser($game['pl2_id']);
+            $games[$key]['user1'] = $this -> getUser($game['pl1_id']);
+            $games[$key]['user2'] = $this -> getUser($game['pl2_id']);
         }
 
         return $games;
+    }
+
+    private function getStageResults($stageID) {
+        $results = R::findAll('result', ' tournament_stage_id = ? ', [$stageID]);
+        $usersResults = [];
+
+        foreach ($results as $result) {
+            $usersResults[] = [
+                'user' => $this -> getUser($result['user_id']),
+                'place' => $result['place']
+            ];
+        }
+
+        return $usersResults;
     }
 
     public function getUser($userID) {
@@ -81,6 +106,6 @@ class TourmanModelTourman extends ListModel
     }
 
     public function getRatings() {
-        R::find('user');
+        R::find('rating');
     }
 }
