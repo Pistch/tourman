@@ -88,6 +88,26 @@ class TourmanModelTourman extends ListModel {
         return $user;
     }
 
+    public function upsertUser($data) {
+        $userFields = ['id', 'name', 'login', 'password', 'email', 'birthday', 'photo', 'rank', 'region', 'info', 'reg_time', 'role', 'block', 'auth_time', `sid`];
+
+        if ($data['id']) {
+            $user = R::load('user', $data['id']);
+        } else {
+            $user = R::dispense('user');
+        }
+
+        foreach ($data as $key => $value) {
+            if ($key !== 'id' && array_search($key, $userFields)) {
+                $user[$key] = $value;
+            }
+        }
+
+        R::store($user);
+
+        return $user;
+    }
+
     public function getRatings($limit = 30, $offset = 0, $tournamentId = 0) {
         if ($tournamentId === 0) {
             $ratings = R::findAll('rating', ' LIMIT ?, ? ORDER BY points DESC ', [$offset, $offset + $limit]);
