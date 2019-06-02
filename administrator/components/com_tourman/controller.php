@@ -38,8 +38,10 @@ class TourmanController extends BaseController
         $this -> registerTask('register-players-to-stage', 'registerPlayersToStage');
         $this -> registerTask('unregister-player-from-stage', 'unregisterPlayerFromStage');
 
-        $this -> registerTask('make-new-tournament', 'makeNewTournament');
-        $this -> registerTask('make-new-tournament-stage', 'makeNewTournamentStage');
+        $this -> registerTask('upsert-tournament', 'upsertTournament');
+        $this -> registerTask('remove-tournament', 'removeTournament');
+        $this -> registerTask('upsert-stage', 'upsertStage');
+        $this -> registerTask('remove-stage', 'removeStage');
         $this -> registerTask('close-registration', 'closeRegistration');
         $this -> registerTask('close-stage', 'closeStage');
 
@@ -110,16 +112,28 @@ class TourmanController extends BaseController
         return $this -> sendResponse($this -> getModel() -> findUser($player));
     }
 
-    public function makeNewTournament() {
+    public function upsertTournament() {
         $post = $this -> getPostData();
 
-        return $this -> sendResponse($this -> getModel() -> makeNewTournament($post));
+        return $this -> sendResponse($this -> getModel() -> upsertTournament($post));
     }
 
-    public function makeNewTournamentStage() {
+    public function removeTournament() {
         $post = $this -> getPostData();
 
-        return $this -> sendResponse($this -> getModel() -> makeNewTournamentStage($post));
+        return $this -> sendResponse($this -> getModel() -> removeTournament($post));
+    }
+
+    public function upsertStage() {
+        $post = $this -> getPostData();
+
+        return $this -> sendResponse($this -> getModel() -> upsertStage($post));
+    }
+
+    public function removeStage() {
+        $post = $this -> getPostData();
+
+        return $this -> sendResponse($this -> getModel() -> removeStage($post));
     }
 
     public function registerPlayersToStage() {

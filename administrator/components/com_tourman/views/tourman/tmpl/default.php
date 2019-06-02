@@ -11,8 +11,10 @@
 defined('_JEXEC') or die;
 
 ?>
-<div id="j-main-container" class="span10">
+<div id="j-main-container">
     <div id="app"></div>
-<!--    <script src="http://localhost:8080/dist/build.js"></script>-->
-    <script src="/media/com_tourman/js/adm_build.js"></script>
+<!--    <script src="https://localhost:8080/dist/adm_build.js"></script>-->
+    <script src="/media/com_tourman/js/adm_build.js?<?php
+    echo(rand(10000, 99999));
+?>"></script>
 </div>

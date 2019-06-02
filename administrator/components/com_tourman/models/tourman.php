@@ -425,27 +425,11 @@ class TourmanModelTourman extends ListModel {
         }
     }
 
-    public function makeNewTournament($data) {
-        $tournament = R::dispense('tournament');
-
-        $tournament -> title = $data['title'];
-        $tournament -> description = $data['description'];
-        $tournament -> start_date = R::isoDate($data['start_date']);
-        $tournament -> end_date = R::isoDate($data['end_date']);
-        $tournament -> is_rating = $data['is_rating'];
-        $tournament -> net_type = $data['net_type'];
-        $tournament -> net_size = $data['net_size'];
-        $tournament -> reglament = $data['reglament'];
-
-        R::store($tournament);
-        return($tournament);
-    }
-
-    public function saveTournamentChanges($data) {
+    public function upsertTournament($data) {
         $tournament = R::load('tournament', $data['id']);
 
         if (!$tournament) {
-            return $this -> makeNewTournament($data);
+            $tournament = R::dispense('tournament');
         }
 
         $tournament -> title = $data['title'];
@@ -461,20 +445,104 @@ class TourmanModelTourman extends ListModel {
         return($tournament);
     }
 
-    public function makeNewTournamentStage($data) {
+    public function removeTournament($data) {
+        $tournament = R::load('tournament', $data['id']);
+
+        if (!$tournament) {
+            return ['error' => 'Турнир не найден'];
+        }
+
+        $tournamentStages = R::find('stage', ' tournament_id = ? ', [$data['id']]);
+
+        if ($tournamentStages) {
+            return ['error' => 'Турнир содержит этапы, удалите сначала их'];
+        }
+
+        R::trash($tournament);
+        return ['status' => 'OK'];
+    }
+
+    public function upsertStage($data) {
+        $stageId = $data['id'];
+
+        if ($stageId) {
+            $stage = R::load('stage', $stageId);
+
+            $stage -> title = $data['title'];
+            $stage -> start_date = $data['start_date'];
+            $stage -> end_date = $data['end_date'];
+
+            if ((int)$stage -> status === 1) {
+                $stage -> net_size = $data['net_size'];
+                $stage -> net_type = $data['net_type'];
+                $stage -> entry_fee = $data['entry_fee'];
+
+                $this -> remakeStageGames($stageId);
+            }
+
+            R::store($stage);
+            return($stage);
+        } else {
+            return $this -> makeNewStage($data);
+        }
+    }
+
+    private function makeNewStage($data) {
         $stage = R::dispense('stage');
 
         $stage -> title = $data['title'];
         $stage -> net_size = $data['net_size'];
         $stage -> net_type = $data['net_type'];
         $stage -> tournament_id = $data['tournament_id'];
-        $stage -> start_date = R::isoDateTime($data['start_date']);
-        $stage -> end_date = R::isoDate($data['end_date']);
+        $stage -> start_date = $data['start_date'];
+        $stage -> end_date = $data['end_date'];
         $stage -> status = 1;
 
         $stageId = R::store($stage);
         $this -> makeStageGames($stageId);
         return($stage);
+    }
+
+    public function removeStage($data) {
+        $stageId = $data['id'];
+        $stage = R::load('stage', $stageId);
+
+        if (!$stage) {
+            return ['error' => 'Этап не найден'];
+        }
+
+        $handicaps = R::find('stagehandicap', ' stage_id = ? ', [$stageId]);
+
+        if (!is_null($handicaps)) {
+            R::trashAll($handicaps);
+        }
+
+        $games = R::find('game', ' stage_id = ? ', [$stageId]);
+
+        if (!is_null($games)) {
+            R::trashAll($games);
+        }
+
+        R::trash($stage);
+        return ['status' => 'OK'];
+    }
+
+    private function remakeStageGames($stageId) {
+        $stage = R::load('stage', $stageId);
+
+        $games = R::find('game', ' stage_id = ? ', [$stageId]);
+
+        if (!is_null($games)) {
+            R::trashAll($games);
+        }
+
+        switch ($stage -> net_type) {
+            case '2-0':
+                $this -> buildNet_2_0($stage -> id, $stage -> net_size);
+                break;
+            case '2-1':
+                $this -> buildNet_2_1($stage -> id, $stage -> net_size);
+        }
     }
 
     private function makeStageGames($stageId) {
@@ -706,10 +774,7 @@ class TourmanModelTourman extends ListModel {
         $gamesQuantity = $stage -> net_size / 2;
 
         if ((int)$stage['status'] !== 1) {
-            return [
-                "result" => "ERROR",
-                "info" => "Wrong stage state"
-            ];
+            return ["error" => "Нельзя начать уже начатый этап"];
         }
 
         if (isset($stage['id'])) {
