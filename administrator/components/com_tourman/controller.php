@@ -29,8 +29,10 @@ class TourmanController extends BaseController
         $this -> registerTask('get-players-tournaments', 'getPlayersTournaments');
         $this -> registerTask('get-closest-tournaments', 'getClosestTournaments');
         $this -> registerTask('get-ratings', 'getRatings');
+        $this -> registerTask('get-dued-games', 'getDuedGames');
 
         $this -> registerTask('set-match-score', 'setMatchScore');
+        $this -> registerTask('start-match', 'startMatch');
         $this -> registerTask('finalize-match', 'finalizeMatch');
 
         $this -> registerTask('suggest-user', 'findUser');
@@ -70,6 +72,10 @@ class TourmanController extends BaseController
         return $this -> sendResponse($this -> getModel() -> getTournamentStage($sId));
     }
 
+    public function getDuedGames() {
+        return $this -> sendResponse($this -> getModel() -> getDuedGames());
+    }
+
     public function getPlayersTournaments() {
         $plId = JUri::getInstance()->getVar('player');
 
@@ -94,6 +100,12 @@ class TourmanController extends BaseController
         return $this -> sendResponse($this -> getModel() -> setMatchScore($post));
     }
 
+    public function startMatch() {
+        $post = $this -> getPostData();
+
+        return $this -> sendResponse($this -> getModel() -> startMatch($post));
+    }
+
     public function upsertUser() {
         $post = $this -> getPostData();
 
@@ -103,7 +115,7 @@ class TourmanController extends BaseController
     public function finalizeMatch() {
         $post = $this -> getPostData();
 
-        return $this -> sendResponse($this -> getModel() -> finalizeMatch($post['matchId']));
+        return $this -> sendResponse($this -> getModel() -> finalizeMatch($post['matchId'], $post['winnerPhasePlacement']));
     }
 
     public function findUser() {

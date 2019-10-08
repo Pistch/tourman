@@ -34,7 +34,7 @@ class TourmanModelTourman extends ListModel {
     }
 
     public function getTournamentStages($tournamentID) {
-        return R::find('stage', ' tournament_id = ?', [ $tournamentID ]);
+        return R::find('stage', ' tournament_id = ? ORDER BY id ASC ', [ $tournamentID ]);
     }
 
     public function getTournamentStage($stageID, $short = false) {
@@ -64,6 +64,22 @@ class TourmanModelTourman extends ListModel {
         }
 
         return $games;
+    }
+
+    public function getDuedGames() {
+        $collection = R::findCollection('game', ' status = "STARTED" ORDER BY due_time ASC');
+        $result = [];
+
+        while ($game = $collection -> next()) {
+            $game['user1'] = $this -> getUser($game['pl1_id']);
+            $game['user1_handicap'] = $this -> getUserStageHandicap($game['pl1_id'], $stage['id']);
+            $game['user2'] = $this -> getUser($game['pl2_id']);
+            $game['user2_handicap'] = $this -> getUserStageHandicap($game['pl2_id'], $stage['id']);
+
+            $result[] = $game;
+        }
+
+        return $result;
     }
 
     public function getUser($userID) {
@@ -190,7 +206,32 @@ class TourmanModelTourman extends ListModel {
         return $match;
     }
 
-    public function finalizeMatch($matchId) {
+
+    public function startMatch($input) {
+        $matchId = $input['id'];
+        $match = R::load('game', (int)$matchId);
+
+        if (!$match -> start_time) {
+            $match -> start_time = R::isoDateTime();
+        }
+
+        if (isset($input['due_time'])) {
+            $match -> due_time = $input['due_time'];
+        }
+
+        if (isset($input['table'])) {
+            $match -> table = $input['table'];
+        }
+
+        $match -> status = 'STARTED';
+
+        R::store($match);
+
+        return $match;
+    }
+
+
+    public function finalizeMatch($matchId, $winnerPhasePlacement = null) {
         $match = R::load('game', (int)$matchId);
 
         if (
@@ -220,17 +261,18 @@ class TourmanModelTourman extends ListModel {
             $loserId = $match['pl1_id'];
         } elseif ((int)$match['pl1_score'] === 0) {
             $this -> proceedWinner((int)$match['pl2_id'] === 0 ? $match['pl1_id'] : $match['pl2_id'], $match, $stage, $phaseType, $phaseNo, $isLastPhase);
-            $match['done'] = true;
+            $match -> status = 'FINISHED';
             R::store($match);
             return $match;
         } else {
             return $match;
         }
 
-        $this -> proceedWinner($winnerId, $match, $stage, $phaseType, $phaseNo, $isLastPhase);
+        $this -> proceedWinner($winnerId, $match, $stage, $phaseType, $phaseNo, $isLastPhase, $winnerPhasePlacement);
         $this -> proceedLoser($loserId, $match, $stage, $phaseType, $phaseNo, $isLastPhase);
 
-        $match['done'] = true;
+        $match -> due_time = R::isoDateTime();
+        $match -> status = 'FINISHED';
 
         R::store($match);
 
@@ -345,7 +387,7 @@ class TourmanModelTourman extends ListModel {
         }
     }
 
-    private function proceedWinner($winnerId, $match, $stage, $phaseType, $phaseNo, $isLastPhase) {
+    private function proceedWinner($winnerId, $match, $stage, $phaseType, $phaseNo, $isLastPhase, $desired_phase_placement = null) {
         if ($stage['net_type'] === '2-0') {
             if ($isLastPhase) {
                 $this -> makeResultRecord($match['stage_id'], $winnerId, 1);
@@ -376,7 +418,18 @@ class TourmanModelTourman extends ListModel {
                         break;
                     case 'l':
                         $newPhase = 'o0';
-                        $newGame = R::findOne('game', ' stage_id = ? AND phase = ? AND phase_placement = ? ', [$match['stage_id'], $newPhase, $match['phase_placement']]);
+
+                        if (isset($desired_phase_placement)) {
+                            $potentialGame = R::findOne('game', ' stage_id = ? AND phase = ? AND phase_placement = ? ', [$match['stage_id'], $newPhase, $desired_phase_placement]);
+
+                            if ((int)($potentialGame -> pl2_id) === 0) {
+                                $phasePlacement = $desired_phase_placement;
+                            }
+                        } else {
+                            $phasePlacement = $match['phase_placement'];
+                        }
+
+                        $newGame = R::findOne('game', ' stage_id = ? AND phase = ? AND phase_placement = ? ', [$match['stage_id'], $newPhase, $phasePlacement]);
 
                         $newGame -> pl2_id = $winnerId;
 
@@ -432,6 +485,7 @@ class TourmanModelTourman extends ListModel {
             $tournament = R::dispense('tournament');
         }
 
+        $tournament -> discipline = $data['discipline'];
         $tournament -> title = $data['title'];
         $tournament -> description = $data['description'];
         $tournament -> start_date = $data['start_date'];
@@ -472,12 +526,18 @@ class TourmanModelTourman extends ListModel {
             $stage -> start_date = $data['start_date'];
             $stage -> end_date = $data['end_date'];
 
+            if (isset($data['discipline'])) {
+                $stage -> discipline = $data['discipline'];
+            }
+
             if ((int)$stage -> status === 1) {
                 $stage -> net_size = $data['net_size'];
                 $stage -> net_type = $data['net_type'];
                 $stage -> entry_fee = $data['entry_fee'];
 
+                R::store($stage);
                 $this -> remakeStageGames($stageId);
+                return($stage);
             }
 
             R::store($stage);
@@ -489,6 +549,18 @@ class TourmanModelTourman extends ListModel {
 
     private function makeNewStage($data) {
         $stage = R::dispense('stage');
+
+        $tournament = R::load('tournament', $data['tournament_id']);
+
+        if (!$tournament) {
+            return ['error' => 'Турнир не найден'];
+        }
+
+        if (isset($data['discipline'])) {
+            $stage -> discipline = $data['discipline'];
+        } else {
+            $stage -> discipline = $tournament -> discipline;
+        }
 
         $stage -> title = $data['title'];
         $stage -> net_size = $data['net_size'];
@@ -557,20 +629,31 @@ class TourmanModelTourman extends ListModel {
         }
     }
 
+    private function makeGame($params) {
+        $game = R::dispense('game');
+
+        $game -> pl1_id = 0;
+        $game -> pl2_id = 0;
+        $game -> pl1_score = 0;
+        $game -> pl2_score = 0;
+        $game -> status = 'NOT_STARTED';
+        $game -> stage_id = $params['stage_id'];
+        $game -> phase_placement = $params['phase_placement'];
+        $game -> phase = $params['phase'];
+
+        R::store($game);
+
+        return game;
+    }
+
     private function buildNet_2_0($stageId, $size) {
         for ($stageNetSize = $size, $phaseNo = 0; $stageNetSize > 1; $phaseNo++) {
             for ($i = 0; $i < $stageNetSize; $i += 2) {
-                $game = R::dispense('game');
-
-                $game -> pl1_id = 0;
-                $game -> pl2_id = 0;
-                $game -> pl1_score = 0;
-                $game -> pl2_score = 0;
-                $game -> stage_id = $stageId;
-                $game -> phase_placement = $i / 2;
-                $game -> phase = 'w' . $phaseNo;
-
-                R::store($game);
+                $this -> makeGame([
+                    "stage_id" => $stageId,
+                    "phase_placement" => $i / 2,
+                    "phase" => 'w' . $phaseNo
+                ]);
             }
 
             $stageNetSize = $stageNetSize / 2;
@@ -580,118 +663,70 @@ class TourmanModelTourman extends ListModel {
     private function buildNet_2_1($stageId, $size) {
         // Виннеры
         for ($i = 0; $i < $size; $i += 2) {
-            $game = R::dispense('game');
-
-            $game -> pl1_id = 0;
-            $game -> pl2_id = 0;
-            $game -> pl1_score = 0;
-            $game -> pl2_score = 0;
-            $game -> stage_id = $stageId;
-            $game -> phase_placement = $i / 2;
-            $game -> phase = 'w0';
-
-            R::store($game);
+            $this -> makeGame([
+                "stage_id" => $stageId,
+                "phase_placement" => $i / 2,
+                "phase" => 'w0'
+            ]);
         }
 
         for ($i = 0; $i < $size / 2; $i += 2) {
-            $game = R::dispense('game');
-
-            $game -> pl1_id = 0;
-            $game -> pl2_id = 0;
-            $game -> pl1_score = 0;
-            $game -> pl2_score = 0;
-            $game -> stage_id = $stageId;
-            $game -> phase_placement = $i / 2;
-            $game -> phase = 'w1';
-
-            R::store($game);
+            $this -> makeGame([
+                "stage_id" => $stageId,
+                "phase_placement" => $i / 2,
+                "phase" => 'w1'
+            ]);
         }
 
         for ($i = 0; $i < $size / 4; $i += 2) {
-            $game = R::dispense('game');
-
-            $game -> pl1_id = 0;
-            $game -> pl2_id = 0;
-            $game -> pl1_score = 0;
-            $game -> pl2_score = 0;
-            $game -> stage_id = $stageId;
-            $game -> phase_placement = $i / 2;
-            $game -> phase = 'w2';
-
-            R::store($game);
+            $this -> makeGame([
+                "stage_id" => $stageId,
+                "phase_placement" => $i / 2,
+                "phase" => 'w2'
+            ]);
         }
 
         // Лузеры
         for ($i = 0; $i < $size / 2; $i += 2) {
-            $game = R::dispense('game');
-
-            $game -> pl1_id = 0;
-            $game -> pl2_id = 0;
-            $game -> pl1_score = 0;
-            $game -> pl2_score = 0;
-            $game -> stage_id = $stageId;
-            $game -> phase_placement = $i / 2;
-            $game -> phase = 'l0';
-
-            R::store($game);
+            $this -> makeGame([
+                "stage_id" => $stageId,
+                "phase_placement" => $i / 2,
+                "phase" => 'l0'
+            ]);
         }
 
         for ($i = 0; $i < $size / 2; $i += 2) {
-            $game = R::dispense('game');
-
-            $game -> pl1_id = 0;
-            $game -> pl2_id = 0;
-            $game -> pl1_score = 0;
-            $game -> pl2_score = 0;
-            $game -> stage_id = $stageId;
-            $game -> phase_placement = $i / 2;
-            $game -> phase = 'l1';
-
-            R::store($game);
+            $this -> makeGame([
+                "stage_id" => $stageId,
+                "phase_placement" => $i / 2,
+                "phase" => 'l1'
+            ]);
         }
 
         for ($i = 0; $i < $size / 4; $i += 2) {
-            $game = R::dispense('game');
-
-            $game -> pl1_id = 0;
-            $game -> pl2_id = 0;
-            $game -> pl1_score = 0;
-            $game -> pl2_score = 0;
-            $game -> stage_id = $stageId;
-            $game -> phase_placement = $i / 2;
-            $game -> phase = 'l2';
-
-            R::store($game);
+            $this -> makeGame([
+                "stage_id" => $stageId,
+                "phase_placement" => $i / 2,
+                "phase" => 'l2'
+            ]);
         }
 
         for ($i = 0; $i < $size / 4; $i += 2) {
-            $game = R::dispense('game');
-
-            $game -> pl1_id = 0;
-            $game -> pl2_id = 0;
-            $game -> pl1_score = 0;
-            $game -> pl2_score = 0;
-            $game -> stage_id = $stageId;
-            $game -> phase_placement = $i / 2;
-            $game -> phase = 'l3';
-
-            R::store($game);
+            $this -> makeGame([
+                "stage_id" => $stageId,
+                "phase_placement" => $i / 2,
+                "phase" => 'l3'
+            ]);
         }
 
         // Олимпийка
         for ($stageNetSize = $size / 4, $phaseNo = 0; $stageNetSize > 1; $phaseNo++) {
             for ($i = 0; $i < $stageNetSize; $i += 2) {
-                $game = R::dispense('game');
-
-                $game -> pl1_id = 0;
-                $game -> pl2_id = 0;
-                $game -> pl1_score = 0;
-                $game -> pl2_score = 0;
-                $game -> stage_id = $stageId;
-                $game -> phase_placement = $i / 2;
-                $game -> phase = 'o' . $phaseNo;
-
-                R::store($game);
+                $this -> makeGame([
+                    "stage_id" => $stageId,
+                    "phase_placement" => $i / 2,
+                    "phase" => 'o' . $phaseNo
+                ]);
             }
 
             $stageNetSize = $stageNetSize / 2;
@@ -747,7 +782,6 @@ class TourmanModelTourman extends ListModel {
 
                 return true;
             }
-
         }
     }
 
@@ -829,7 +863,7 @@ class TourmanModelTourman extends ListModel {
             $game = R::findOne('game', ' phase = "w0" AND phase_placement = ? AND stage_id = ?', [$phasePlacement, $stageId]);
 
             $game['pl' . ($targetGameSlot + 1) . '_id'] = $playerIds[$i];
-
+            
             R::store($game);
         }
 
