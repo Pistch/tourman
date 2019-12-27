@@ -277,8 +277,15 @@ class TourmanModelTourman extends ListModel {
             return $match;
         }
 
-        $this -> proceedWinner($winnerId, $match, $stage, $phaseType, $phaseNo, $isLastPhase, $winnerPhasePlacement);
-        $this -> proceedLoser($loserId, $match, $stage, $phaseType, $phaseNo, $isLastPhase);
+        if (isset($match['actions'])) {
+            $actions = json_decode($match['actions']);
+
+            $this -> proceedPlayer($match, $actions['loser'], $loserId);
+            $this -> proceedPlayer($match, $actions['winner'], $winnerId);
+        } else {
+            $this -> proceedWinner($winnerId, $match, $stage, $phaseType, $phaseNo, $isLastPhase, $winnerPhasePlacement);
+            $this -> proceedLoser($loserId, $match, $stage, $phaseType, $phaseNo, $isLastPhase);
+        }
 
         $match -> due_time = R::isoDateTime();
         $match -> status = 'FINISHED';
@@ -286,6 +293,23 @@ class TourmanModelTourman extends ListModel {
         R::store($match);
 
         return $match;
+    }
+
+    private function proceedPlayer($game, $action, $playerId) {
+        if ($action['place'] !== null) {
+            $this -> makeResultRecord($game['stage_id'], $playerId, $action['place']);
+        } else {
+            $targetGame = R::findOne(
+                'game',
+                ' stage_id = ? AND phase = ? AND phase_placement = ? ',
+                [$game['stage_id'], $action['phase'], $action['phasePlacement']]
+            );
+
+            $targetGame['pl' . $action['position'] . '_id'] = $playerId;
+            $targetGame['status'] = 'NOT_STARTED';
+
+            R::store($targetGame);
+        }
     }
 
     private function proceedLoser($loserId, $match, $stage, $phaseType, $phaseNo, $isLastPhase) {
