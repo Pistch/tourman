@@ -1039,4 +1039,110 @@ class TourmanModelTourman extends ListModel {
 
         return $this -> getRegisteredPlayers($stageId);
     }
+
+    private function dropResult($stage_id, $player_id) {
+        $result = R::findOne('result', ' tournament_stage_id = ? AND user_id = ? ', [$stage_id, $player_id]);
+
+        R::trash($result);
+    }
+
+    public function resetGame($gameId, $additionalDropParams) {
+        $game = R::load('game', $gameId);
+        $loserAndWinner = getLoserAndWinner($game);
+
+        if (isset($game['actions'])) {
+            $actions = json_decode($game['actions']);
+        } else {
+            // для обратной совместимости с играми, которые были созданы до структуры
+            $stage = R::load($game['stage_id']);
+            $phaseType = $game['phase'][0];
+            $phaseNo = $game['phase'][1];
+
+            $actions = getPlayersActions(
+                $game['phase_placement'],
+                $stage['net_size'],
+                $stage['net_type'],
+                $phaseType,
+                $phaseNo
+            );
+        }
+
+        $hasLoserAction = false;
+        $hasWinnerAction = false;
+
+        if ($loserAndWinner === null) {
+            $game['pl1_score'] = 0;
+            $game['pl2_score'] = 0;
+            $game['pl1_score'] = 'NOT_STARTED';
+
+            R::store($game);
+
+            return $this -> getStageGames($game['stage_id']);
+        } else {
+            $loserGameParams = $actions['loser']; 
+            if ($loserGameParams['place'] !== null) {
+                $this -> dropResult($game['stage_id'], $loserAndWinner['loser']);
+            } else {
+                $loserAction =  $loserGameParams['targetGame'];
+                $potentialGameToReset = R::find(
+                    'game',
+                    ' phase = ? AND phase_placement = ? ',
+                    [$loserAction['phase'], $loserAction['phasePlacement']]
+                );
+                    
+                if ((int)$potentialGameToReset['pl' . $loserAction['position'] . '_id'] !== 0) {
+                    $key = 'pl' . $loserAction['position'];
+
+                    $this -> resetGame($potentialGameToReset['id'], [
+                        $key => true
+                    ]);
+
+                    $hasLoserAction = true;
+                }
+            }
+
+            $winnerGameParams = $actions['winner']; 
+            if ($winnerGameParams['place'] !== null) {
+                $this -> dropResult($game['stage_id'], $loserAndWinner['winner']);
+            } else {
+                $winnerAction =  $winnerGameParams['targetGame'];
+                $potentialGameToReset = R::find(
+                    'game',
+                    ' phase = ? AND phase_placement = ? ',
+                    [$winnerAction['phase'], $winnerAction['phasePlacement']]
+                );
+                    
+                if ((int)$potentialGameToReset['pl' . $winnerAction['position'] . '_id'] !== 0) {
+                    $key = 'pl' . $winnerAction['position'];
+
+                    $this -> resetGame($potentialGameToReset['id'], [
+                        $key => true
+                    ]);
+
+                    $hasWinnerAction = true;
+                }
+            }
+        }
+
+        if (($hasLoserAction || $hasWinnerAction) &&
+            (isset($additionalDropParams['pl1']) || isset($additionalDropParams['pl2']))) {
+            $game['status'] = 'INVALID';
+        } else {
+            $game['pl1_score'] = 0;
+            $game['pl2_score'] = 0;
+            $game['status'] = 'NOT_STARTED';
+        }
+
+        if (isset($additionalDropParams['pl1'])) {
+            $game['pl1_id'] = 0;
+        } 
+
+        if (isset($additionalDropParams['pl2'])) {
+            $game['pl2_id'] = 0;
+        } 
+
+        R::store($game);
+
+        return $this -> getStageGames($game['stage_id']);
+    }
 }

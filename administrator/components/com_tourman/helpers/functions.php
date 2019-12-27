@@ -11,6 +11,22 @@ function getJSON($arr) {
     return json_encode($arr, JSON_UNESCAPED_UNICODE);
 }
 
+function getLoserAndWinner($match) {
+    if ((int)$match['pl1_score'] > (int)$match['pl2_score']) {
+        return [
+            'winner' => $match['pl1_id'],
+            'loser' => $match['pl2_id']
+        ];
+    } elseif ((int)$match['pl1_score'] < (int)$match['pl2_score'])  {
+        return [
+            'winner' => $match['pl2_id'],
+            'loser' => $match['pl1_id']
+        ];
+    } else {
+        return null;
+    }
+}
+
 function getIsLastPhase($phaseType, $phaseNo, $netType, $netSize) {
     if ($netType === '2-0') {
         return pow(2, $phaseNo + 1) === (int)$netSize;
