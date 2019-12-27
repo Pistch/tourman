@@ -255,12 +255,11 @@ class TourmanModelTourman extends ListModel {
             return $match;
         }
 
+        $stage = R::load('stage', $match['stage_id']);
         $phaseType = substr($match['phase'], 0, 1);
         $phaseNo = (int)substr($match['phase'], 1, 1);
         $nextPhaseNo = $phaseNo + 1;
-        $isLastPhase = R::findOne('game', ' stage_id = ? AND phase = ? ', [$match['stage_id'], "$phaseType$nextPhaseNo"]) === null;
-
-        $stage = R::load('stage', $match['stage_id']);
+        $isLastPhase = getIsLastPhase($phaseType, $phaseNo, $stage['net_type'], $stage['net_size']);
 
         if ((int)$match['pl1_score'] > (int)$match['pl2_score']) {
             $winnerId = $match['pl1_id'];
@@ -305,7 +304,7 @@ class TourmanModelTourman extends ListModel {
                 [$game['stage_id'], $action['phase'], $action['phasePlacement']]
             );
 
-            $targetGame['pl' . $action['position'] . '_id'] = $playerId;
+            $targetGame['pl' . (string)$action['position'] . '_id'] = $playerId;
             $targetGame['status'] = 'NOT_STARTED';
 
             R::store($targetGame);
@@ -1114,7 +1113,7 @@ class TourmanModelTourman extends ListModel {
                     [$loserAction['phase'], $loserAction['phasePlacement']]
                 );
                     
-                if ((int)$potentialGameToReset['pl' . $loserAction['position'] . '_id'] !== 0) {
+                if ((int)$potentialGameToReset['pl' . (string)$loserAction['position'] . '_id'] !== 0) {
                     $key = 'pl' . $loserAction['position'];
 
                     $this -> resetGame($potentialGameToReset['id'], [
@@ -1136,7 +1135,7 @@ class TourmanModelTourman extends ListModel {
                     [$winnerAction['phase'], $winnerAction['phasePlacement']]
                 );
                     
-                if ((int)$potentialGameToReset['pl' . $winnerAction['position'] . '_id'] !== 0) {
+                if ((int)$potentialGameToReset['pl' . (string)$winnerAction['position'] . '_id'] !== 0) {
                     $key = 'pl' . $winnerAction['position'];
 
                     $this -> resetGame($potentialGameToReset['id'], [
