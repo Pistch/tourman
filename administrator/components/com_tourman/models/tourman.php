@@ -13,6 +13,15 @@ use Joomla\CMS\MVC\Model\ListModel;
 defined('_JEXEC') or die;
 
 require_once(realpath(__DIR__ . '/../helpers/db.php'));
+require_once(realpath(__DIR__ . '/../helpers/functions.php'));
+
+/**
+ * reset
+ * 
+ * UPDATE game SET pl1_id = 0, pl2_id = 0, pl1_score = 0, pl2_score = 0, game.status = 'NOT_STARTED' WHERE stage_id = 1266 AND NOT game.phase = 'w0';
+ * DELETE FROM `result` WHERE tournament_stage_id = 1266;
+ * UPDATE game SET pl1_score = 0, pl2_score = 0, game.status = 'NOT_STARTED' WHERE stage_id = 1266 AND game.phase = 'w0';
+ */
 
 /**
  * Tourman
@@ -629,7 +638,7 @@ class TourmanModelTourman extends ListModel {
         }
     }
 
-    private function makeGame($params) {
+    private function makeGame($params, $net_size, $net_type) {
         $game = R::dispense('game');
 
         $game -> pl1_id = 0;
@@ -640,6 +649,17 @@ class TourmanModelTourman extends ListModel {
         $game -> stage_id = $params['stage_id'];
         $game -> phase_placement = $params['phase_placement'];
         $game -> phase = $params['phase'];
+
+        $phaseType = $params['phase'][0];
+        $phaseNo = $params['phase'][1];
+
+        $game -> actions = getPlayersActions(
+            $params['phase_placement'],
+            $net_size,
+            $net_type,
+            $phaseType,
+            $phaseNo
+        );
 
         R::store($game);
 
@@ -653,7 +673,7 @@ class TourmanModelTourman extends ListModel {
                     "stage_id" => $stageId,
                     "phase_placement" => $i / 2,
                     "phase" => 'w' . $phaseNo
-                ]);
+                ], $size, '2-0');
             }
 
             $stageNetSize = $stageNetSize / 2;
@@ -667,7 +687,7 @@ class TourmanModelTourman extends ListModel {
                 "stage_id" => $stageId,
                 "phase_placement" => $i / 2,
                 "phase" => 'w0'
-            ]);
+            ], $size, '2-1');
         }
 
         for ($i = 0; $i < $size / 2; $i += 2) {
@@ -675,7 +695,7 @@ class TourmanModelTourman extends ListModel {
                 "stage_id" => $stageId,
                 "phase_placement" => $i / 2,
                 "phase" => 'w1'
-            ]);
+            ], $size, '2-1');
         }
 
         for ($i = 0; $i < $size / 4; $i += 2) {
@@ -683,7 +703,7 @@ class TourmanModelTourman extends ListModel {
                 "stage_id" => $stageId,
                 "phase_placement" => $i / 2,
                 "phase" => 'w2'
-            ]);
+            ], $size, '2-1');
         }
 
         // Лузеры
@@ -692,7 +712,7 @@ class TourmanModelTourman extends ListModel {
                 "stage_id" => $stageId,
                 "phase_placement" => $i / 2,
                 "phase" => 'l0'
-            ]);
+            ], $size, '2-1');
         }
 
         for ($i = 0; $i < $size / 2; $i += 2) {
@@ -700,7 +720,7 @@ class TourmanModelTourman extends ListModel {
                 "stage_id" => $stageId,
                 "phase_placement" => $i / 2,
                 "phase" => 'l1'
-            ]);
+            ], $size, '2-1');
         }
 
         for ($i = 0; $i < $size / 4; $i += 2) {
@@ -708,7 +728,7 @@ class TourmanModelTourman extends ListModel {
                 "stage_id" => $stageId,
                 "phase_placement" => $i / 2,
                 "phase" => 'l2'
-            ]);
+            ], $size, '2-1');
         }
 
         for ($i = 0; $i < $size / 4; $i += 2) {
@@ -716,7 +736,7 @@ class TourmanModelTourman extends ListModel {
                 "stage_id" => $stageId,
                 "phase_placement" => $i / 2,
                 "phase" => 'l3'
-            ]);
+            ], $size, '2-1');
         }
 
         // Олимпийка
@@ -726,7 +746,7 @@ class TourmanModelTourman extends ListModel {
                     "stage_id" => $stageId,
                     "phase_placement" => $i / 2,
                     "phase" => 'o' . $phaseNo
-                ]);
+                ], $size, '2-1');
             }
 
             $stageNetSize = $stageNetSize / 2;
