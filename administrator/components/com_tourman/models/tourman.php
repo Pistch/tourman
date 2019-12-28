@@ -1094,8 +1094,6 @@ class TourmanModelTourman extends ListModel {
         $hasWinnerAction = false;
 
         if ($loserAndWinner === null) {
-            $game['pl1_score'] = 0;
-            $game['pl2_score'] = 0;
             $game['pl1_score'] = 'NOT_STARTED';
 
             R::store($game);
@@ -1151,8 +1149,6 @@ class TourmanModelTourman extends ListModel {
             (isset($additionalDropParams['pl1']) || isset($additionalDropParams['pl2']))) {
             $game['status'] = 'INVALID';
         } else {
-            $game['pl1_score'] = 0;
-            $game['pl2_score'] = 0;
             $game['status'] = 'NOT_STARTED';
         }
 
