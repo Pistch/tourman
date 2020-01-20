@@ -79,7 +79,7 @@ function getLoserAction($currentPhasePlacement, $net_size, $net_type, $phaseType
                         // Тут всё просто, каждый падает в свою дырку
                         $fromPhasePlacement = (int)$currentPhasePlacement;
                         if ($fromPhasePlacement % 2 === 0) {
-                            $phasePlacement = $fromPhasePlacement / 2;
+                            $phasePlacement = floor($fromPhasePlacement / 2);
                             $targetPlayerSlot = 1;
                         } else {
                             $phasePlacement = ($fromPhasePlacement - 1) / 2;
@@ -165,7 +165,7 @@ function getLoserAction($currentPhasePlacement, $net_size, $net_type, $phaseType
     return $action;
 }
 
-function getWinnerAction($currentPhasePlacement, $net_size, $net_type, $phaseType, $phaseNo) {
+function getWinnerAction($phasePlacement, $net_size, $net_type, $phaseType, $phaseNo) {
     $action = [
         'place' => null,
         'targetGame' => null
@@ -177,8 +177,8 @@ function getWinnerAction($currentPhasePlacement, $net_size, $net_type, $phaseTyp
             $action['place'] = 1;
         } else {
             $action['targetGame'] = [
-                'phase' => $phaseType . 'w' . ((int)$phaseNo + 1),
-                'phasePlacement' => (int)$phasePlacement / 2,
+                'phase' => $phaseType . ((int)$phaseNo + 1),
+                'phasePlacement' => floor((int)$phasePlacement / 2),
                 'position' => (int)$phasePlacement % 2 === 0 ? 1 : 2
             ];
         }
@@ -227,4 +227,24 @@ function getWinnerAction($currentPhasePlacement, $net_size, $net_type, $phaseTyp
 
     return $action;
 }
+
+// {
+//     "winner":{
+//         "place":null,
+//         "targetGame":{
+//             "phase":"w1",
+//             "phasePlacement":0,
+//             "position":1
+//         }
+//     },
+//     "loser":{
+//         "place":null,
+//         "targetGame":{
+//             "phase":"l0",
+//             "phasePlacement":1,
+//             "position":1
+//         }
+//     }
+// }
 ?>
+

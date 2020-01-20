@@ -243,6 +243,8 @@ class TourmanModelTourman extends ListModel {
     public function finalizeMatch($matchId, $winnerPhasePlacement = null) {
         $match = R::load('game', (int)$matchId);
 
+        var_dump($match);
+
         if (
             ((int)$match['pl1_id'] === 0 && (int)$match['pl2_id'] === 0) ||
             (
@@ -277,7 +279,7 @@ class TourmanModelTourman extends ListModel {
         }
 
         if (isset($match['actions'])) {
-            $actions = json_decode($match['actions']);
+            $actions = json_decode($match['actions'], true);
 
             $this -> proceedPlayer($match, $actions['loser'], $loserId);
             $this -> proceedPlayer($match, $actions['winner'], $winnerId);
@@ -298,14 +300,14 @@ class TourmanModelTourman extends ListModel {
         if ($action['place'] !== null) {
             $this -> makeResultRecord($game['stage_id'], $playerId, $action['place']);
         } else {
+            $targetGameParams = $action['targetGame'];
             $targetGame = R::findOne(
                 'game',
                 ' stage_id = ? AND phase = ? AND phase_placement = ? ',
-                [$game['stage_id'], $action['phase'], $action['phasePlacement']]
+                [$game['stage_id'], $targetGameParams['phase'], $targetGameParams['phasePlacement']]
             );
 
-            $targetGame['pl' . (string)$action['position'] . '_id'] = $playerId;
-            $targetGame['status'] = 'NOT_STARTED';
+            $targetGame['pl' . (string)$targetGameParams['position'] . '_id'] = $playerId;
 
             R::store($targetGame);
         }
@@ -526,6 +528,7 @@ class TourmanModelTourman extends ListModel {
         $tournament -> net_type = $data['net_type'];
         $tournament -> net_size = $data['net_size'];
         $tournament -> reglament = $data['reglament'];
+        $tournament -> logo = $data['logo'];
 
         R::store($tournament);
         return($tournament);
@@ -1074,20 +1077,20 @@ class TourmanModelTourman extends ListModel {
         $loserAndWinner = getLoserAndWinner($game);
 
         if (isset($game['actions'])) {
-            $actions = json_decode($game['actions']);
+            $actions = json_decode($game['actions'], true);
         } else {
             // для обратной совместимости с играми, которые были созданы до структуры
             $stage = R::load($game['stage_id']);
             $phaseType = $game['phase'][0];
             $phaseNo = $game['phase'][1];
 
-            $actions = getPlayersActions(
+            $actions = json_decode(getPlayersActions(
                 $game['phase_placement'],
                 $stage['net_size'],
                 $stage['net_type'],
                 $phaseType,
                 $phaseNo
-            );
+            ), true);
         }
 
         $hasLoserAction = false;
@@ -1163,5 +1166,30 @@ class TourmanModelTourman extends ListModel {
         R::store($game);
 
         return $this -> getStageGames($game['stage_id']);
+    }
+
+    public function swapPlayer($stage_id, $playerIdNow, $playerIdShouldBe) {
+        R::exec('UPDATE game SET pl1_id = ? WHERE stage_id = ? AND pl1_id = ?;', [
+            $playerIdShouldBe,
+            $stage_id,
+            $playerIdNow
+        ]);
+
+        R::exec('UPDATE game SET pl2_id = ? WHERE stage_id = ? AND pl2_id = ?;', [
+            $playerIdShouldBe,
+            $stage_id,
+            $playerIdNow
+        ]);
+
+        R::exec('UPDATE result SET user_id = ? WHERE tournament_stage_id = ? AND user_id = ?;', [
+            $playerIdShouldBe,
+            $stage_id,
+            $playerIdNow
+        ]);
+
+        $stage = R::load('stage', $stage_id);
+        $tournament = R::load('tournament', $stage['tournament_id']);
+
+        $this -> recalculatePeriodRating($tournament['start'], $tournament['end']);
     }
 }
