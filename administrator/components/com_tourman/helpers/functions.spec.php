@@ -46,6 +46,7 @@ function test(string $message, callable $testRunnerFunction) {
               ' received';
        }
     };
+    $testCount = $testCount + 1;
 
     try {
         $testRunnerFunction($comparator);
@@ -53,19 +54,20 @@ function test(string $message, callable $testRunnerFunction) {
         $comparerHadError = true;
     }
 
-    $testCount = $testCount + 1;
 
     if ($comparerResult) {
         println($message . ' - ' . greenText('✔'));
         return;
     }
 
+    $failedCount = $failedCount + 1;
+
     if (!$comparerCalled) {
         println(redText($message . ' - ✘'));
         println('    Test should call expect func at least once!');
-        $failedCount = $failedCount + 1;
     } elseif ($comparerHadError) {
-
+        println(redText($message . ' - ✘'));
+        println('    Test thrown an exception!');
     } else {
         println(redText($message . ' - ✘'));
         println($errorMessage);
@@ -97,11 +99,13 @@ println('getLoserAction');
 println('2-1');
 test('should proceed to 2nd round', function($expect) {
     $res = getLoserAction(3, 16, '2-1', 'l', 2);
-    $expect($res['targetGame']['phase'], 'w1');
+    $expect($res['targetGame'], null);
+    $expect($res['place'], 7);
 });
 
 
-println('    Total ' . $testCount . ' tests');
+println(' ');
+println('Total ' . $testCount . ' tests');
 
 if ($failedCount > 0) {
     println('    ' . redText($failedCount) . ' failed');

@@ -162,7 +162,7 @@ function getLoserAction($currentPhasePlacement, $netSize, $netType, $phaseType, 
                 // пул занятых мест, при сетке до двух поражений с выходом в олимпийку
                 $placeMupltiplierMap = [ 3/4, 1/2, 3/8, 1/4 ];
 
-                $action['place'] = $netSize * $placeMupltiplierMap[$phaseNo] + 1;
+                $action['place'] = (int)($netSize * $placeMupltiplierMap[$phaseNo] + 1);
 
                 break;
             case 'o':
