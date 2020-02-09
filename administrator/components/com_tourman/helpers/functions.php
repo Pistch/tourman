@@ -28,12 +28,15 @@ function getLoserAndWinner($match) {
 }
 
 function getIsLastPhase($phaseType, $phaseNo, $netType, $netSize) {
+    $phaseNo = (int)$phaseNo;
+    $netSize = (int)$netSize;
+
     if ($netType === '2-0') {
-        return pow(2, $phaseNo + 1) === (int)$netSize;
+        return pow(2, $phaseNo + 1) === $netSize;
     } else {
         switch ($phaseType) {
             case 'o':
-                return pow(2, $phaseNo + 1) === ((int)$netSize / 4);
+                return pow(2, $phaseNo + 1) === ($netSize / 4);
 
             case 'w':
                 return $phaseNo === 2;
@@ -44,21 +47,28 @@ function getIsLastPhase($phaseType, $phaseNo, $netType, $netSize) {
     }
 }
 
-function getPlayersActions($currentPhasePlacement, $net_size, $net_type, $phaseType, $phaseNo) {
+function getPlayersActions($currentPhasePlacement, $netSize, $netType, $phaseType, $phaseNo) {
+    $phaseNo = (int)$phaseNo;
+    $netSize = (int)$netSize;
+    $currentPhasePlacement = (int)$currentPhasePlacement;
+
     return getJSON([
-        'winner' => getWinnerAction($currentPhasePlacement, $net_size, $net_type, $phaseType, $phaseNo),
-        'loser' => getLoserAction($currentPhasePlacement, $net_size, $net_type, $phaseType, $phaseNo)
+        'winner' => getWinnerAction($currentPhasePlacement, $netSize, $netType, $phaseType, $phaseNo),
+        'loser' => getLoserAction($currentPhasePlacement, $netSize, $netType, $phaseType, $phaseNo)
     ]);
 }
 
-function getLoserAction($currentPhasePlacement, $net_size, $net_type, $phaseType, $phaseNo) {
+function getLoserAction($currentPhasePlacement, $netSize, $netType, $phaseType, $phaseNo) {
+    $phaseNo = (int)$phaseNo;
+    $netSize = (int)$netSize;
+    $currentPhasePlacement = (int)$currentPhasePlacement;
     $action = [
         'place' => null,
         'targetGame' => null
     ];
 
-    if ($net_type === '2-0') {
-        $action['place'] = pow(2, log((int)$net_size, 2) - $phaseNo - 1) + 1;
+    if ($netType === '2-0') {
+        $action['place'] = (int)pow(2, log($netSize, 2) - $phaseNo - 1) + 1;
     } else {
         switch ($phaseType) {
             case 'w':
@@ -77,12 +87,12 @@ function getLoserAction($currentPhasePlacement, $net_size, $net_type, $phaseType
                 switch ($phaseNo) {
                     case 0:
                         // Тут всё просто, каждый падает в свою дырку
-                        $fromPhasePlacement = (int)$currentPhasePlacement;
+                        $fromPhasePlacement = $currentPhasePlacement;
                         if ($fromPhasePlacement % 2 === 0) {
-                            $phasePlacement = floor($fromPhasePlacement / 2);
+                            $newPhasePlacement = (int)floor($fromPhasePlacement / 2);
                             $targetPlayerSlot = 1;
                         } else {
-                            $phasePlacement = ($fromPhasePlacement - 1) / 2;
+                            $newPhasePlacement = ($fromPhasePlacement - 1) / 2;
                             $targetPlayerSlot = 2;
                         }
 
@@ -90,19 +100,19 @@ function getLoserAction($currentPhasePlacement, $net_size, $net_type, $phaseType
 
                     case 1:
                         // Здесь каждый должен упасть крест-накрест со своим положением в верхней сетке
-                        $phasePlacement = (int)$net_size / 4 - (int)$currentPhasePlacement - 1;
+                        $newPhasePlacement = $netSize / 4 - $currentPhasePlacement - 1;
 
                         break;
 
                     case 2:
                         // В сетке на 16 меняем местами
-                        if ((int)$net_size === 16) {
-                            $phasePlacement = (int)$currentPhasePlacement === 1 ? 0 : 1;
+                        if ($netSize === 16) {
+                            $newPhasePlacement = $currentPhasePlacement === 1 ? 0 : 1;
                             break;
                         // В сетке на 32 перетасовываем пары
-                        } elseif ((int)$net_size === 32) {
-                            $wasPhasePlacement = (int)$currentPhasePlacement;
-                            $phasePlacement = $wasPhasePlacement % 2 === 0
+                        } elseif ($netSize === 32) {
+                            $wasPhasePlacement = $currentPhasePlacement;
+                            $newPhasePlacement = $wasPhasePlacement % 2 === 0
                                 ? $wasPhasePlacement + 1
                                 : $wasPhasePlacement - 1;
                             break;
@@ -120,15 +130,15 @@ function getLoserAction($currentPhasePlacement, $net_size, $net_type, $phaseType
                         // 6 -> 8
                         // 7 -> 5
                         // 8 -> 6
-                        $fromPhasePlacement = (int)$currentPhasePlacement;
-                        $fourNumber = floor($fromPhasePlacement / 4);
+                        $fromPhasePlacement = $currentPhasePlacement;
+                        $fourNumber = (int)floor($fromPhasePlacement / 4);
                         $gameNumberInFour = $fromPhasePlacement % 4;
 
                         $targetGameNumberInFour = $gameNumberInFour + 2 > 3
                             ? $gameNumberInFour - 2
                             : $gameNumberInFour + 2;
 
-                        $phasePlacement = $fourNumber * 4 + $targetGameNumberInFour;
+                        $newPhasePlacement = $fourNumber * 4 + $targetGameNumberInFour;
 
                         break;
 
@@ -136,7 +146,7 @@ function getLoserAction($currentPhasePlacement, $net_size, $net_type, $phaseType
                         $currentPhasePlacement;
                 }
 
-                $action['targetGame']['phasePlacement'] = $phasePlacement;
+                $action['targetGame']['phasePlacement'] = $newPhasePlacement;
                 
                 if ($phaseNo === 0) {
                     // Специфика первого раунда сетки проигравших, нужно понимать, в верхний или нижний слот в игре
@@ -152,11 +162,11 @@ function getLoserAction($currentPhasePlacement, $net_size, $net_type, $phaseType
                 // пул занятых мест, при сетке до двух поражений с выходом в олимпийку
                 $placeMupltiplierMap = [ 3/4, 1/2, 3/8, 1/4 ];
 
-                $action['place'] = (int)$net_size * $placeMupltiplierMap[$phaseNo] + 1;
+                $action['place'] = $netSize * $placeMupltiplierMap[$phaseNo] + 1;
 
                 break;
             case 'o':
-                $action['place'] = pow(2, log((int)$net_size / 4, 2) - $phaseNo - 1) + 1;
+                $action['place'] = (int)pow(2, log($netSize / 4, 2) - $phaseNo - 1) + 1;
 
                 break;
         }
@@ -165,21 +175,24 @@ function getLoserAction($currentPhasePlacement, $net_size, $net_type, $phaseType
     return $action;
 }
 
-function getWinnerAction($phasePlacement, $net_size, $net_type, $phaseType, $phaseNo) {
+function getWinnerAction($currentPhasePlacement, $netSize, $netType, $phaseType, $phaseNo) {
+    $phaseNo = (int)$phaseNo;
+    $netSize = (int)$netSize;
+    $currentPhasePlacement = (int)$currentPhasePlacement;
     $action = [
         'place' => null,
         'targetGame' => null
     ];
-    $isLastPhase = getIsLastPhase($phaseType, $phaseNo, $net_type, $net_size);
+    $isLastPhase = getIsLastPhase($phaseType, $phaseNo, $netType, $netSize);
 
-    if ($net_type == '2-0') {
+    if ($netType == '2-0') {
         if ($isLastPhase) {
             $action['place'] = 1;
         } else {
             $action['targetGame'] = [
-                'phase' => $phaseType . ((int)$phaseNo + 1),
-                'phasePlacement' => floor((int)$phasePlacement / 2),
-                'position' => (int)$phasePlacement % 2 === 0 ? 1 : 2
+                'phase' => $phaseType . (string)($phaseNo + 1),
+                'phasePlacement' => (int)floor($currentPhasePlacement / 2),
+                'position' => $currentPhasePlacement % 2 === 0 ? 1 : 2
             ];
         }
     } else {
@@ -187,30 +200,33 @@ function getWinnerAction($phasePlacement, $net_size, $net_type, $phaseType, $pha
             switch ($phaseType) {
                 case 'o':
                     $action['place'] = 1;
+                    break;
 
                 case 'w':
                     $action['targetGame'] = [
                         'phase' => 'o0',
-                        'phasePlacement' => (int)$phasePlacement,
+                        'phasePlacement' => $currentPhasePlacement,
                         'position' => 1
                     ];
+                    break;
 
                 case 'l':
                     $action['targetGame'] = [
                         'phase' => 'o0',
-                        'phasePlacement' => (int)$phasePlacement,
+                        'phasePlacement' => $currentPhasePlacement,
                         'position' => 2
                     ];
+                    break;
             }
         } else {
             $newPhasePlacement = ($phaseType === 'l' && $phaseNo % 2 === 0)
-                ? (int)$phasePlacement
-                : floor((int)$phasePlacement / 2);
+                ? $currentPhasePlacement
+                : (int)floor($currentPhasePlacement / 2);
 
             if ($phaseType === 'l' && $phaseNo % 2 === 0) {
                 $position = 2;
             } else {
-                if ((int)$phasePlacement % 2 === 0) {
+                if ($currentPhasePlacement % 2 === 0) {
                     $position = 1;
                 } else {
                     $position = 2;
@@ -227,24 +243,5 @@ function getWinnerAction($phasePlacement, $net_size, $net_type, $phaseType, $pha
 
     return $action;
 }
-
-// {
-//     "winner":{
-//         "place":null,
-//         "targetGame":{
-//             "phase":"w1",
-//             "phasePlacement":0,
-//             "position":1
-//         }
-//     },
-//     "loser":{
-//         "place":null,
-//         "targetGame":{
-//             "phase":"l0",
-//             "phasePlacement":1,
-//             "position":1
-//         }
-//     }
-// }
 ?>
 

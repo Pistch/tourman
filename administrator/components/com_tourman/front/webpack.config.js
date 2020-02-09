@@ -50,7 +50,10 @@ module.exports = {
   devServer: {
     historyApiFallback: true,
     noInfo: true,
-    overlay: true
+    overlay: true,
+    proxy: {
+      '/administrator': 'https://glushenkoa.tmweb.ru/administrator'
+    }
   },
   performance: {
     hints: false

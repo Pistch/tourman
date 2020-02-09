@@ -16,7 +16,12 @@
     </div>
     <template slot="footer">
       <a-button @click="close">Отменить</a-button>
-      <a-button type="primary" icon="save" @click="finish">Сохранить</a-button>
+      <a-button
+        type="primary"
+        icon="save"
+        @click="finish"
+        :disabled="placement === -1"
+      >Сохранить</a-button>
     </template>
   </a-modal>
 </template>

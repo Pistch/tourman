@@ -282,7 +282,7 @@ class TourmanModelTourman extends ListModel {
             $actions = json_decode($match['actions'], true);
 
             $this -> proceedPlayer($match, $actions['loser'], $loserId);
-            $this -> proceedPlayer($match, $actions['winner'], $winnerId);
+            $this -> proceedPlayer($match, $actions['winner'], $winnerId, $winnerPhasePlacement);
         } else {
             $this -> proceedWinner($winnerId, $match, $stage, $phaseType, $phaseNo, $isLastPhase, $winnerPhasePlacement);
             $this -> proceedLoser($loserId, $match, $stage, $phaseType, $phaseNo, $isLastPhase);
@@ -296,15 +296,16 @@ class TourmanModelTourman extends ListModel {
         return $match;
     }
 
-    private function proceedPlayer($game, $action, $playerId) {
+    private function proceedPlayer($game, $action, $playerId, $winnerPhasePlacement = null) {
         if ($action['place'] !== null) {
             $this -> makeResultRecord($game['stage_id'], $playerId, $action['place']);
         } else {
             $targetGameParams = $action['targetGame'];
+            $newPhasePlacement = $winnerPhasePlacement || $targetGameParams['phasePlacement'];
             $targetGame = R::findOne(
                 'game',
                 ' stage_id = ? AND phase = ? AND phase_placement = ? ',
-                [$game['stage_id'], $targetGameParams['phase'], $targetGameParams['phasePlacement']]
+                [$game['stage_id'], $targetGameParams['phase'], $newPhasePlacement]
             );
 
             $targetGame['pl' . (string)$targetGameParams['position'] . '_id'] = $playerId;
