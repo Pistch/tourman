@@ -16,6 +16,7 @@
             :set-match-score="setMatchScore"
             :start-match="startMatch"
             :make-match-done="finalizeMatch"
+            :reset-game="resetGame"
           />
         </div>
         <div class="cross-stage-links" v-if="shouldLinkPhases(loserPhases, phaseNo) || phaseNo === loserPhases.length - 1">
@@ -40,6 +41,7 @@
             :set-match-score="setMatchScore"
             :start-match="startMatch"
             :make-match-done="finalizeMatch"
+            :reset-game="resetGame"
           />
         </div>
         <div class="cross-stage-links" v-if="shouldLinkPhases(winnerPlusOlympicPhases, phaseNo)">
@@ -161,6 +163,15 @@
             this.$store.dispatch('reloadStage');
             this.$store.dispatch('getDuedGames');
           });
+      },
+      resetGame(matchId) {
+        if (confirm('Вы уверены? Это действие сбросит состояние и результаты игра, зависящих от результатов данной!')) {
+          return api.resetGame(matchId)
+            .then(() => {
+              this.focusGame(null);
+              this.$store.dispatch('reloadStage');
+            });
+        }
       },
       closeStage() {
         this.$store.dispatch('closeStage');

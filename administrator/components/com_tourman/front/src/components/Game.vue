@@ -17,6 +17,7 @@
       :start-match="startMatch"
       :finalize-match="finalizeMatch"
       @close="unfocusGame"
+      :reset-game="resetGame"
     />
   </game-representation>
 </template>
@@ -50,6 +51,10 @@
         default: noop
       },
       'start-match': {
+        type: Function,
+        default: noop
+      },
+      'reset-game': {
         type: Function,
         default: noop
       },

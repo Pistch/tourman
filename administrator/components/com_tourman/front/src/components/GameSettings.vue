@@ -29,7 +29,7 @@
         </a-button>
       </div>
 
-      <div class="flex-row" v-if="game.status === 'STARTED'">
+      <div class="flex-row" v-if="game.status === 'STARTED' || game.status === 'INVALID'">
         <div class="column">
           <div class="flex-row">
             <div class="player-name">{{game.user1}}</div>
@@ -81,7 +81,7 @@
 
       <div v-if="game.status === 'FINISHED'">
         <div>Игра завершена</div>
-        <a-button type="danger">В игре ошибка!</a-button>
+        <a-button type="danger" @click="resetThisGame">В игре ошибка!</a-button>
       </div>
     </div>
 
@@ -123,6 +123,7 @@
       'set-score',
       'start-match',
       'finalize-match',
+      'reset-game',
       'game',
       'is-done',
       'visible'
@@ -171,6 +172,9 @@
       },
       toggleWinnerPrompt() {
         this.winnerPromptVisible = !this.winnerPromptVisible;
+      },
+      resetThisGame() {
+        this.resetGame(this.game.id);
       },
       number(value) {
         return Number(value);

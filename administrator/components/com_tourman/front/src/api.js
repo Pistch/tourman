@@ -156,7 +156,21 @@ class Api {
   resetGame(game_id) {
     const body = {game_id};
 
-    return this.post({task: 'reset-game'}, {body});
+    function logger(level, logEntry) {
+      if (Array.isArray(logEntry)) {
+        logEntry.forEach(logger.bind(null, level + 1));
+      } else {
+        const prefix = level ? new Array(level).fill(' |').join('') + '-' : '';
+        console.log(prefix + logEntry);
+      }
+    }
+
+    return this.post({task: 'reset-game'}, {body})
+      .then(executionLog => {
+        executionLog.forEach(logger.bind(null, 0));
+
+        return executionLog;
+      });
   }
 
   setPlayerStageHandicap(params) {
