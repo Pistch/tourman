@@ -14,18 +14,18 @@
 	<scriptfile>script.php</scriptfile>
 
 	<!-- Runs on install -->
-	<install>
-		<sql>
-			<file driver="mysql" charset="utf8">sql/install/mysql/mysql.sql</file>
-		</sql>
-	</install>
+<!--	<install>-->
+<!--		<sql>-->
+<!--			<file driver="mysql" charset="utf8">sql/install/mysql/mysql.sql</file>-->
+<!--		</sql>-->
+<!--	</install>-->
 
 	<!-- Runs on update -->
-	<update>
-		<schemas>
-			<schemapath type="mysql">sql/updates/mysql</schemapath>
-		</schemas>
-	</update>
+<!--	<update>-->
+<!--		<schemas>-->
+<!--			<schemapath type="mysql">sql/updates/mysql</schemapath>-->
+<!--		</schemas>-->
+<!--	</update>-->
 
 	<!-- Media files -->
 	<media folder="media/com_tourman" destination="com_tourman">
@@ -52,7 +52,7 @@
 				Note that all & must be escaped to &amp; for the file to be valid
 				XML and be parsed by the installer
 			-->
-			<menu link="option=com_tourman">Список турниров</menu>
+<!--			<menu link="option=com_tourman">Список турниров</menu>-->
 		</submenu>
 
 		<!-- Core files -->
@@ -66,7 +66,7 @@
 			<folder>helpers</folder>
 			<folder>language</folder>
 			<folder>models</folder>
-			<folder>sql</folder>
+<!--			<folder>sql</folder>-->
 			<folder>tables</folder>
 			<folder>views</folder>
 		</files>
