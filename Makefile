@@ -1,3 +1,9 @@
+run_admin:
+	npm run dev --prefix administrator/components/com_tourman/front
+
+run_client:
+	npm run dev --prefix components/com_tourman/front
+
 build_admin:
 	npm run build --prefix administrator/components/com_tourman/front
 	mv administrator/components/com_tourman/front/dist/adm_build.js media/com_tourman/js/adm_build.js
