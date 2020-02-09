@@ -243,8 +243,6 @@ class TourmanModelTourman extends ListModel {
     public function finalizeMatch($matchId, $winnerPhasePlacement = null) {
         $match = R::load('game', (int)$matchId);
 
-        var_dump($match);
-
         if (
             ((int)$match['pl1_id'] === 0 && (int)$match['pl2_id'] === 0) ||
             (
@@ -301,7 +299,12 @@ class TourmanModelTourman extends ListModel {
             $this -> makeResultRecord($game['stage_id'], $playerId, $action['place']);
         } else {
             $targetGameParams = $action['targetGame'];
-            $newPhasePlacement = $winnerPhasePlacement || $targetGameParams['phasePlacement'];
+            $newPhasePlacement = $targetGameParams['phasePlacement'];
+
+            if ($winnerPhasePlacement !== null) {
+                $newPhasePlacement = $winnerPhasePlacement;
+            }
+
             $targetGame = R::findOne(
                 'game',
                 ' stage_id = ? AND phase = ? AND phase_placement = ? ',
@@ -1073,15 +1076,30 @@ class TourmanModelTourman extends ListModel {
         R::trash($result);
     }
 
-    public function resetGame($gameId, $additionalDropParams) {
+    public function resetGame($gameId, $additionalDropParams = []) {
+        $result = [$gameId];
         $game = R::load('game', $gameId);
+
+        $phpl = $game -> phasePlacement;
+        $ph = $game -> phase;
+
+        $result[] = "$ph $phpl";
+
+        if (!$game['id']) {
+            return;
+
+            $result[] = 'no such game';
+        }
+
         $loserAndWinner = getLoserAndWinner($game);
 
         if (isset($game['actions'])) {
             $actions = json_decode($game['actions'], true);
+            $result[] = 'get actions from the game';
         } else {
+            $result[] = 'no actions from the game';
             // для обратной совместимости с играми, которые были созданы до структуры
-            $stage = R::load($game['stage_id']);
+            $stage = R::load('stage', $game['stage_id']);
             $phaseType = $game['phase'][0];
             $phaseNo = $game['phase'][1];
 
@@ -1098,28 +1116,29 @@ class TourmanModelTourman extends ListModel {
         $hasWinnerAction = false;
 
         if ($loserAndWinner === null) {
+            $result[] = 'no loser and no winner, no need to invalidate'; // thats wrong
             $game['pl1_score'] = 'NOT_STARTED';
-
-            R::store($game);
-
-            return $this -> getStageGames($game['stage_id']);
         } else {
+            $result[] = 'has loser and winner';
+
             $loserGameParams = $actions['loser']; 
             if ($loserGameParams['place'] !== null) {
+                $result[] = 'will drop result record for loser';
                 $this -> dropResult($game['stage_id'], $loserAndWinner['loser']);
             } else {
                 $loserAction =  $loserGameParams['targetGame'];
-                $potentialGameToReset = R::find(
+                $potentialGameToReset = R::findOne(
                     'game',
-                    ' phase = ? AND phase_placement = ? ',
-                    [$loserAction['phase'], $loserAction['phasePlacement']]
+                    ' stage_id = ? AND phase = ? AND phase_placement = ? ',
+                    [$game['stage_id'], $loserAction['phase'], $loserAction['phasePlacement']]
                 );
+                $result[] = 'found another dependant';
+                $result[] = json_encode($potentialGameToReset, JSON_UNESCAPED_UNICODE);
                     
                 if ((int)$potentialGameToReset['pl' . (string)$loserAction['position'] . '_id'] !== 0) {
-                    $key = 'pl' . $loserAction['position'];
-
-                    $this -> resetGame($potentialGameToReset['id'], [
-                        $key => true
+                    $result[] = 'next item for dependant results';
+                    $result[] = $this -> resetGame($potentialGameToReset['id'], [
+                        'pl' . (string)$loserAction['position'] => true
                     ]);
 
                     $hasLoserAction = true;
@@ -1128,20 +1147,22 @@ class TourmanModelTourman extends ListModel {
 
             $winnerGameParams = $actions['winner']; 
             if ($winnerGameParams['place'] !== null) {
+                $result[] = 'will drop result record for winner';
                 $this -> dropResult($game['stage_id'], $loserAndWinner['winner']);
             } else {
-                $winnerAction =  $winnerGameParams['targetGame'];
-                $potentialGameToReset = R::find(
+                $winnerAction = $winnerGameParams['targetGame'];
+                $potentialGameToReset = R::findOne(
                     'game',
-                    ' phase = ? AND phase_placement = ? ',
-                    [$winnerAction['phase'], $winnerAction['phasePlacement']]
+                    ' stage_id = ? AND phase = ? AND phase_placement = ? ',
+                    [$game['stage_id'], $winnerAction['phase'], $winnerAction['phasePlacement']]
                 );
+                $result[] = 'found another dependant';
+                $result[] = json_encode($potentialGameToReset, JSON_UNESCAPED_UNICODE);
                     
                 if ((int)$potentialGameToReset['pl' . (string)$winnerAction['position'] . '_id'] !== 0) {
-                    $key = 'pl' . $winnerAction['position'];
-
-                    $this -> resetGame($potentialGameToReset['id'], [
-                        $key => true
+                    $result[] = 'next item for dependant results';
+                    $result[] = $this -> resetGame($potentialGameToReset['id'], [
+                        'pl' . (string)$winnerAction['position'] => true
                     ]);
 
                     $hasWinnerAction = true;
@@ -1151,22 +1172,26 @@ class TourmanModelTourman extends ListModel {
 
         if (($hasLoserAction || $hasWinnerAction) &&
             (isset($additionalDropParams['pl1']) || isset($additionalDropParams['pl2']))) {
+            $result[] = 'put an invalid mark';
             $game['status'] = 'INVALID';
         } else {
+            $result[] = 'just drop status';
             $game['status'] = 'NOT_STARTED';
         }
 
         if (isset($additionalDropParams['pl1'])) {
+            $result[] = 'drop pl1';
             $game['pl1_id'] = 0;
         } 
 
         if (isset($additionalDropParams['pl2'])) {
+            $result[] = 'drop pl2';
             $game['pl2_id'] = 0;
         } 
 
         R::store($game);
 
-        return $this -> getStageGames($game['stage_id']);
+        return $result;
     }
 
     public function swapPlayer($stage_id, $playerIdNow, $playerIdShouldBe) {
