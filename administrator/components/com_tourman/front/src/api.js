@@ -147,6 +147,18 @@ class Api {
     return this.post({task: 'recalculate-rating-by-period'}, {body});
   }
 
+  swapPlayer(stage_id, wrong_player_id, right_player_id) {
+    const body = {stage_id, wrong_player_id, right_player_id};
+
+    return this.post({task: 'swap-player'}, {body});
+  }
+
+  resetGame(game_id) {
+    const body = {game_id};
+
+    return this.post({task: 'reset-game'}, {body});
+  }
+
   setPlayerStageHandicap(params) {
     return this.post({task: 'set-player-stage-handicap'}, {body: params});
   }

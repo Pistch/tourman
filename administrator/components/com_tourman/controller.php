@@ -32,6 +32,7 @@ class TourmanController extends BaseController
         $this -> registerTask('get-dued-games', 'getDuedGames');
 
         $this -> registerTask('set-match-score', 'setMatchScore');
+        $this -> registerTask('set-player-stage-handicap', 'setPlayerStageHandicap');
         $this -> registerTask('start-match', 'startMatch');
         $this -> registerTask('finalize-match', 'finalizeMatch');
 
@@ -48,9 +49,8 @@ class TourmanController extends BaseController
         $this -> registerTask('close-stage', 'closeStage');
 
         $this -> registerTask('recalculate-rating-by-period', 'recalculatePeriodRating');
-        $this -> registerTask('recalculate-rating-by-tournament', 'closeStage');
-
-        $this -> registerTask('set-player-stage-handicap', 'setPlayerStageHandicap');
+        $this -> registerTask('swap-player', 'swapPlayer');
+        $this -> registerTask('reset-game', 'resetGame');
     }
 
     public function getModel($name = 'Tourman', $prefix = 'TourmanModel', $config = array()) {
@@ -182,6 +182,18 @@ class TourmanController extends BaseController
         $post = $this -> getPostData();
 
         return $this -> sendResponse($this -> getModel() -> setPlayerStageHandicap($post['player_id'], $post['tournament_id'], $post['stage_id'], $post['value']));
+    }
+
+    public function resetGame() {
+        $post = $this -> getPostData();
+
+        return $this -> sendResponse($this -> getModel() -> resetGame($post['game_id']));
+    }
+
+    public function swapPlayer() {
+        $post = $this -> getPostData();
+
+        return $this -> sendResponse($this -> getModel() -> swapPlayer($post['stage_id'], $post['wrong_player_id'], $post['right_player_id']));
     }
 
 

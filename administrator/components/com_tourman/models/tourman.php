@@ -1192,5 +1192,7 @@ class TourmanModelTourman extends ListModel {
         $tournament = R::load('tournament', $stage['tournament_id']);
 
         $this -> recalculatePeriodRating($tournament['start'], $tournament['end']);
+
+        return $this -> getStageGames($stage_id);
     }
 }
