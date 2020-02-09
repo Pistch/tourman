@@ -2,7 +2,6 @@
   <div
     :class="['match', gameClassName, className]"
     @click="handleClick"
-    v-on-clickaway="handleClickAway"
   >
     <div
       :class="[
@@ -114,9 +113,6 @@
       },
       handleClick() {
         this.$emit('click', this.game);
-      },
-      handleClickAway() {
-        this.$emit('clickaway');
       }
     }
   };

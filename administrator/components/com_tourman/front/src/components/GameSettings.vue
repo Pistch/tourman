@@ -1,89 +1,103 @@
 <template>
-  <div @click.stop>
-    <div v-if="game.status === 'NOT_STARTED'">
-      <div class="game-settings-label">Стол:</div>
-      <table-picker
-        @select="selectTable"
-        :selected="selectedTable"
-      />
-      <div class="game-settings-label">Продолжительность: {{formatDuration()}}</div>
-      <a-slider
-        :min="15"
-        :max="180"
-        v-model="duration"
-        dots
-        :step="15"
-        :tip-formatter="formatDuration"
-      />
-      <a-button
-        type="primary"
-        @click="startThisMatch"
-        icon="check-circle"
-      >
-        Начать игру
-      </a-button>
-    </div>
-
-    <div class="flex-row" v-if="!isDone">
-<!--    <div class="flex-row" v-if="game.status === 'STARTED'">-->
-      <div class="column">
-        <div class="flex-row">
-          <a-button
-            size="small"
-            type="dashed"
-            shape="circle"
-            @click="setPlayer1Score(0)"
-          />
-
-          <a-rate
-            :value="number(game.pl1_score)"
-            @change="setPlayer1Score"
-            :count="7"
-          >
-            <a-icon type="check-circle" slot="character" />
-          </a-rate>
-        </div>
-
-        <div class="flex-row">
-          <a-button
-            size="small"
-            type="dashed"
-            shape="circle"
-            @click="setPlayer2Score(0)"
-          />
-
-          <a-rate
-            :value="number(game.pl2_score)"
-            @change="setPlayer2Score"
-            :count="7"
-          >
-            <a-icon type="check-circle" slot="character" />
-          </a-rate>
-        </div>
-      </div>
-
-      <div class="column">
+  <a-modal
+    :visible="visible"
+    @cancel="close"
+    title="Игра"
+  >
+    <div>
+      <div v-if="game.status === 'NOT_STARTED'">
+        <div class="game-settings-label">Стол:</div>
+        <table-picker
+          @select="selectTable"
+          :selected="selectedTable"
+        />
+        <div class="game-settings-label">Продолжительность: {{formatDuration()}}</div>
+        <a-slider
+          :min="15"
+          :max="180"
+          v-model="duration"
+          dots
+          :step="15"
+          :tip-formatter="formatDuration"
+        />
         <a-button
           type="primary"
-          @click="tryFinalizeMatch"
+          @click="startThisMatch"
           icon="check-circle"
+        >
+          Начать игру
+        </a-button>
+      </div>
+
+      <div class="flex-row" v-if="game.status === 'STARTED'">
+        <div class="column">
+          <div class="flex-row">
+            <div class="player-name">{{game.user1}}</div>
+
+            <a-button
+              size="small"
+              type="dashed"
+              shape="circle"
+              @click="setPlayer1Score(0)"
+            />
+
+            <a-rate
+              :value="number(game.pl1_score)"
+              @change="setPlayer1Score"
+              :count="7"
+            >
+              <a-icon type="check-circle" slot="character" />
+            </a-rate>
+          </div>
+
+          <div class="flex-row">
+            <div class="player-name">{{game.user2}}</div>
+
+            <a-button
+              size="small"
+              type="dashed"
+              shape="circle"
+              @click="setPlayer2Score(0)"
+            />
+
+            <a-rate
+              :value="number(game.pl2_score)"
+              @change="setPlayer2Score"
+              :count="7"
+            >
+              <a-icon type="check-circle" slot="character" />
+            </a-rate>
+          </div>
+        </div>
+
+        <winner-placement-prompt
+          v-if="game.phase === 'l3'"
+          :visible="winnerPromptVisible"
+          :finalize-match="finalizeMatch"
+          :game="game"
+          @close="toggleWinnerPrompt"
         />
       </div>
 
-      <winner-placement-prompt
-        v-if="game.phase === 'l3'"
-        :visible="winnerPromptVisible"
-        :finalize-match="finalizeMatch"
-        :game="game"
-        @close="toggleWinnerPrompt"
-      />
+      <div v-if="game.status === 'FINISHED'">
+        <div>Игра завершена</div>
+        <a-button type="danger">В игре ошибка!</a-button>
+      </div>
     </div>
 
-<!--    <div v-if="game.status === 'FINISHED'">-->
-    <div v-if="isDone">
-      Игра завершена
-    </div>
-  </div>
+
+    <template slot="footer">
+      <a-button @click="close">Отменить</a-button>
+      <a-button
+        v-if="game.status !== 'FINISHED'"
+        type="primary"
+        icon="check-circle"
+        @click="tryFinalizeMatch"
+      >
+        Сохранить
+      </a-button>
+    </template>
+  </a-modal>
 </template>
 
 <script>
@@ -110,7 +124,8 @@
       'start-match',
       'finalize-match',
       'game',
-      'is-done'
+      'is-done',
+      'visible'
     ],
     data: function() {
       return {
@@ -195,5 +210,11 @@
   .game-settings-label {
     color: black;
     font-size: 18px;
+  }
+
+  .player-name {
+    width: 200px;
+    overflow: hidden;
+    flex-shrink: 0;
   }
 </style>

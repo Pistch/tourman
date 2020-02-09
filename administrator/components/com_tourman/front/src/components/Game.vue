@@ -3,31 +3,21 @@
     :game="game"
     :is-done="isGameDone"
     @click="focusGame"
-    @clickaway="unfocusGame"
     :is-focused="isFocused"
     :is-simple="isSimple"
     :hover-player="hoverPlayer"
     :hovered-player="hoveredPlayer"
     :unhover-player="unhoverPlayer"
   >
-    <a-popover
+    <game-settings
       v-if="gameHasPlayers && !isSimple"
-      placement="right"
       :visible="isFocused"
-      :arrowPointAtCenter="true"
-    >
-      <div class="game-done-positioner" />
-
-      <game-settings
-        :game="game"
-        :is-done="false"
-        :set-score="submitScore"
-        :start-match="startMatch"
-        :finalize-match="finalizeMatch"
-        @close="unfocusGame"
-        slot="content"
-      />
-    </a-popover>
+      :game="game"
+      :set-score="submitScore"
+      :start-match="startMatch"
+      :finalize-match="finalizeMatch"
+      @close="unfocusGame"
+    />
   </game-representation>
 </template>
 
@@ -92,9 +82,9 @@
         this.$emit('focused', this.isFocused ? null : this.game.id);
       },
       submitScore(pl1_score, pl2_score) {
-        // if (this.isGameDone) {
-        //     return;
-        // }
+        if (this.isGameDone) {
+            return;
+        }
 
         this.setMatchScore(this.game.id, Number(pl1_score), Number(pl2_score));
       },
@@ -122,11 +112,4 @@
 </script>
 
 <style scoped>
-  .game-done-positioner {
-    position: absolute;
-    top: 50%;
-    right: 0;
-    width: 1px;
-    height: 1px;
-  }
 </style>
