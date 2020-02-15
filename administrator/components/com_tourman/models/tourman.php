@@ -500,6 +500,10 @@ class TourmanModelTourman extends ListModel {
     }
 
     private function makeResultRecord($stageId, $userId, $place) {
+        if ((int)$userId === 0) {
+            return
+        }
+        
         $existingRecord = R::findOne('result', ' tournament_stage_id = ? AND user_id = ? ', [$stageId, $userId]);
 
         if ($existingRecord === null) {
@@ -975,7 +979,12 @@ class TourmanModelTourman extends ListModel {
 
         $existingRecords = R::findAll('result', ' tournament_stage_id = ? ', [$stageId]);
 
-        $scoresMap = json_decode(file_get_contents(__DIR__ . '/nehodyachka_points.json'), true)[$netSize];
+        $scoresMap = json_decode(
+            file_get_contents(
+                realpath(__DIR__ . '/nehodyachka_points.json')
+            ),
+            true
+        )[$netSize];
 
         foreach ($existingRecords as $key => $result) {
             if (isset($scoresMap[$result['place']])) {
@@ -1116,7 +1125,7 @@ class TourmanModelTourman extends ListModel {
         $hasWinnerAction = false;
 
         if ($loserAndWinner === null) {
-            $result[] = 'no loser and no winner, no need to invalidate'; // thats wrong
+            $result[] = 'no loser and no winner, no need to invalidate';
             $game['pl1_score'] = 'NOT_STARTED';
         } else {
             $result[] = 'has loser and winner';
