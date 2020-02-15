@@ -93,7 +93,7 @@
     ],
     computed: {
       isRating: function () {
-        return Boolean(this.tournament.is_rating);
+        return Boolean(Number(this.tournament.is_rating));
       },
       datesRange: function () {
         return (
