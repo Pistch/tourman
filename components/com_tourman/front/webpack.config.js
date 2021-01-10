@@ -49,7 +49,10 @@ module.exports = {
     historyApiFallback: true,
     noInfo: true,
     overlay: true,
-    host: '0.0.0.0'
+    host: '0.0.0.0',
+    proxy: {
+      '/index.php': 'https://bcpolygon.ru/index.php'
+    }
   },
   performance: {
     hints: false

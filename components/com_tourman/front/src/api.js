@@ -36,5 +36,5 @@ class Api {
 }
 
 export default new Api({
-  basePath: 'https://bcpolygon.ru/index.php?option=com_tourman&'
+  basePath: '/index.php?option=com_tourman&'
 });
