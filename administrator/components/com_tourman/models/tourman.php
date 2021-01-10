@@ -268,7 +268,14 @@ class TourmanModelTourman extends ListModel {
             $winnerId = $match['pl2_id'];
             $loserId = $match['pl1_id'];
         } elseif ((int)$match['pl1_score'] === 0) {
-            $this -> proceedWinner((int)$match['pl2_id'] === 0 ? $match['pl1_id'] : $match['pl2_id'], $match, $stage, $phaseType, $phaseNo, $isLastPhase);
+            $this -> proceedWinner(
+                (int)$match['pl2_id'] === 0 ? $match['pl1_id'] : $match['pl2_id'],
+                $match,
+                $stage,
+                $phaseType,
+                $phaseNo,
+                $isLastPhase
+            );
             $match -> status = 'FINISHED';
             R::store($match);
             return $match;
@@ -732,12 +739,14 @@ class TourmanModelTourman extends ListModel {
             ], $size, '2-1');
         }
 
-        for ($i = 0; $i < $size / 4; $i += 2) {
-            $this -> makeGame([
-                "stage_id" => $stageId,
-                "phase_placement" => $i / 2,
-                "phase" => 'w2'
-            ], $size, '2-1');
+        if ($size > 8) {
+            for ($i = 0; $i < $size / 4; $i += 2) {
+                $this -> makeGame([
+                    "stage_id" => $stageId,
+                    "phase_placement" => $i / 2,
+                    "phase" => 'w2'
+                ], $size, '2-1');
+            }
         }
 
         // Лузеры
@@ -757,24 +766,27 @@ class TourmanModelTourman extends ListModel {
             ], $size, '2-1');
         }
 
-        for ($i = 0; $i < $size / 4; $i += 2) {
-            $this -> makeGame([
-                "stage_id" => $stageId,
-                "phase_placement" => $i / 2,
-                "phase" => 'l2'
-            ], $size, '2-1');
-        }
-
-        for ($i = 0; $i < $size / 4; $i += 2) {
-            $this -> makeGame([
-                "stage_id" => $stageId,
-                "phase_placement" => $i / 2,
-                "phase" => 'l3'
-            ], $size, '2-1');
+        if ($size > 8) {
+            for ($i = 0; $i < $size / 4; $i += 2) {
+                $this -> makeGame([
+                    "stage_id" => $stageId,
+                    "phase_placement" => $i / 2,
+                    "phase" => 'l2'
+                ], $size, '2-1');
+            }
+    
+            for ($i = 0; $i < $size / 4; $i += 2) {
+                $this -> makeGame([
+                    "stage_id" => $stageId,
+                    "phase_placement" => $i / 2,
+                    "phase" => 'l3'
+                ], $size, '2-1');
+            }
         }
 
         // Олимпийка
-        for ($stageNetSize = $size / 4, $phaseNo = 0; $stageNetSize > 1; $phaseNo++) {
+        $olympic_denominator = $size > 8 ? 4 : 2;
+        for ($stageNetSize = $size / $olympic_denominator, $phaseNo = 0; $stageNetSize > 1; $phaseNo++) {
             for ($i = 0; $i < $stageNetSize; $i += 2) {
                 $this -> makeGame([
                     "stage_id" => $stageId,

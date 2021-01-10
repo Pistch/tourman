@@ -36,13 +36,15 @@ function getIsLastPhase($phaseType, $phaseNo, $netType, $netSize) {
     } else {
         switch ($phaseType) {
             case 'o':
-                return pow(2, $phaseNo + 1) === ($netSize / 4);
+                $olympic_denominator = $netSize > 8 ? 4 : 2;
+
+                return pow(2, $phaseNo + 1) === ($netSize / $olympic_denominator);
 
             case 'w':
-                return $phaseNo === 2;
+                return $netSize > 8 ? $phaseNo === 2 : $phaseNo === 1;
 
             case 'l':
-                return $phaseNo === 3;
+                return $netSize > 8 ? $phaseNo === 3 : $phaseNo === 1;
         }
     }
 }
@@ -166,7 +168,8 @@ function getLoserAction($currentPhasePlacement, $netSize, $netType, $phaseType, 
 
                 break;
             case 'o':
-                $action['place'] = (int)pow(2, log($netSize / 4, 2) - $phaseNo - 1) + 1;
+                $olympic_denominator = $netSize > 8 ? 4 : 2;
+                $action['place'] = (int)pow(2, log($netSize / $olympic_denominator, 2) - $phaseNo - 1) + 1;
 
                 break;
         }

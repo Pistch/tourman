@@ -23,6 +23,7 @@
           :value="stage.net_size"
           @change="fieldChange"
         >
+          <a-radio-button value="8">8</a-radio-button>
           <a-radio-button value="16">16</a-radio-button>
           <a-radio-button value="32">32</a-radio-button>
           <a-radio-button value="64">64</a-radio-button>
