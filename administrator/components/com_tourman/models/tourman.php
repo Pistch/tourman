@@ -353,9 +353,9 @@ class TourmanModelTourman extends ListModel {
                             break;
 
                         case 2:
-                            // В сетке на 16 меняем местами
+                            // В сетке на 16 сохраняем позицию
                             if ((int)$stage['net_size'] === 16) {
-                                $phasePlacement = (int)$match['phase_placement'] === 1 ? 0 : 1;
+                                $phasePlacement = (int)$match['phase_placement'];
                                 break;
                             // В сетке на 32 перетасовываем пары
                             } elseif ((int)$stage['net_size'] === 32) {
@@ -501,9 +501,9 @@ class TourmanModelTourman extends ListModel {
 
     private function makeResultRecord($stageId, $userId, $place) {
         if ((int)$userId === 0) {
-            return
+            return;
         }
-        
+
         $existingRecord = R::findOne('result', ' tournament_stage_id = ? AND user_id = ? ', [$stageId, $userId]);
 
         if ($existingRecord === null) {

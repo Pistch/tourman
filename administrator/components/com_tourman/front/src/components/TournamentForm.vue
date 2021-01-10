@@ -11,7 +11,7 @@
           size="large"
           name="title"
           :value="tournament.title"
-          @change="fieldChange"
+          @change="handleGeneralFieldChange"
         />
       </label>
 
@@ -21,7 +21,7 @@
           autosize
           name="description"
           :value="tournament.description"
-          @change="fieldChange"
+          @change="handleGeneralFieldChange"
         />
       </label>
 
@@ -31,7 +31,7 @@
           autosize
           name="reglament"
           :value="tournament.reglament"
-          @change="fieldChange"
+          @change="handleGeneralFieldChange"
         />
       </label>
 
@@ -40,7 +40,7 @@
         <a-input
           name="logo"
           :value="tournament.logo"
-          @change="fieldChange"
+          @change="handleGeneralFieldChange"
         />
       </label>
 
@@ -49,13 +49,13 @@
         <a-input
           name="discipline"
           :value="tournament.discipline"
-          @change="fieldChange"
+          @change="handleGeneralFieldChange"
         />
       </label>
 
       <label class="form-field">
         <a-checkbox
-          @change="fieldChange"
+          @change="handleCheckboxChange"
           name="is_rating"
           :checked="isRating"
         >
@@ -114,9 +114,13 @@
       close() {
         this.$emit('close');
       },
-      fieldChange(event) {
-        const {name, checked: value} = event.target;
-
+      handleCheckboxChange(event) {
+        this.handleFieldChange(event.target.name, event.target.checked);
+      },
+      handleGeneralFieldChange(event) {
+        this.handleFieldChange(event.target.name, event.target.value);
+      },
+      handleFieldChange(name, value) {
         this.$emit('change', {
           [name]: value
         });

@@ -89,7 +89,7 @@
     <template slot="footer">
       <a-button @click="close">Отменить</a-button>
       <a-button
-        v-if="game.status !== 'FINISHED'"
+        v-if="game.status === 'STARTED' || game.status === 'INVALID'"
         type="primary"
         icon="check-circle"
         @click="tryFinalizeMatch"
